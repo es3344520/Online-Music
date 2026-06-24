@@ -1,16 +1,6 @@
 {
-  "routes": [
-    {
-      "src": "/api/list",
-      "dest": "/api/index"
-    },
-    {
-      "src": "/api/stream",
-      "dest": "/api/stream"
-    },
-    {
-      "src": "/",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/api", "destination": "/api.py" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
