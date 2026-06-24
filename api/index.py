@@ -1,140 +1,93 @@
-import os
 import json
+import os
 import boto3
-from botocore.client import Config
-from urllib.parse import parse_qs, urlparse, unquote
+from botocore.config import Config
 
-# ========== 配置 ==========
-ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID")
-ACCESS_KEY = os.environ.get("R2_ACCESS_KEY_ID")
-SECRET_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
-BUCKET = os.environ.get("R2_BUCKET_NAME", "music")
-
-AUDIO_EXTS = {".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aac", ".wma"}
-
-s3 = boto3.client(
-    "s3",
-    aws_access_key_id=ACCESS_KEY,
-    aws_secret_access_key=SECRET_KEY,
-    endpoint_url=f"https://{ACCOUNT_ID}.r2.cloudflarestorage.com",
-    config=Config(signature_version="s3v4"),
-    region_name="auto",
-)
-
-
-def parse_filename(filename):
-    name = filename.rsplit(".", 1)[0]
-    if " - " in name:
-        parts = name.split(" - ", 1)
-        return parts[0].strip(), parts[1].strip()
-    elif "_" in name:
-        parts = name.split("_", 1)
-        return parts[0].strip(), parts[1].strip()
-    else:
-        return "Unknown", name.strip()
-
-
-def response_json(status_code, data):
-    return {
-        "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
-        "body": json.dumps(data, ensure_ascii=False),
-    }
-
-
-class Handler:
-    def __call__(self, request):
-        path = request.get("path", "")
-
-        if path.startswith("/api/list"):
-            return self.handle_list(request)
-        elif path.startswith("/api/play"):
-            return self.handle_play(request)
+def handler(request):
+    try:
+        # 获取环境变量
+        bucket_name = os.environ.get('R2_BUCKET_NAME')
+        access_key = os.environ.get('R2_ACCESS_KEY_ID')
+        secret_key = os.environ.get('R2_SECRET_ACCESS_KEY')
+        account_id = os.environ.get('R2_ACCOUNT_ID')
+        
+        if not all([bucket_name, access_key, secret_key, account_id]):
+            return {
+                'statusCode': 500,
+                'body': json.dumps({'error': 'Missing R2 configuration'})
+            }
+        
+        # 配置R2客户端
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=f'https://{account_id}.r2.cloudflarestorage.com',
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name='auto',
+            config=Config(signature_version='s3v4')
+        )
+        
+        # 获取分页参数
+        query_params = request.get('queryStringParameters', {}) or {}
+        page = int(query_params.get('page', 1))
+        per_page = 10
+        
+        # 计算起始位置
+        start_index = (page - 1) * per_page
+        
+        # 列出所有对象
+        response = s3_client.list_objects_v2(
+            Bucket=bucket_name,
+            MaxKeys=per_page,
+            StartAfter='' if page == 1 else None
+        )
+        
+        # 如果是第一页，获取所有文件用于计算总数
+        if page == 1:
+            all_objects = s3_client.list_objects_v2(Bucket=bucket_name)
+            total_files = len(all_objects.get('Contents', []))
         else:
-            return response_json(404, {"error": "Not Found"})
-
-    def handle_list(self, request):
-        try:
-            url = urlparse(request.get("path", ""))
-            query = parse_qs(url.query)
-            page = int(query.get("page", ["1"])[0])
-            page_size = 10
-
-            all_objects = []
-            continuation_token = None
-
-            while True:
-                params = {"Bucket": BUCKET, "MaxKeys": 1000}
-                if continuation_token:
-                    params["ContinuationToken"] = continuation_token
-
-                resp = s3.list_objects_v2(**params)
-
-                for obj in resp.get("Contents", []):
-                    key = obj["Key"]
-                    ext = "." + key.split(".")[-1].lower()
-                    if ext in AUDIO_EXTS:
-                        artist, title = parse_filename(key)
-                        all_objects.append({
-                            "file": key,
-                            "title": title,
-                            "artist": artist,
-                            "size": obj["Size"],
-                            "modified": obj["LastModified"].isoformat(),
-                        })
-
-                if not resp.get("IsTruncated"):
-                    break
-                continuation_token = resp.get("NextContinuationToken")
-
-            all_objects.sort(key=lambda x: x["file"])
-
-            total = len(all_objects)
-            total_pages = max(1, (total + page_size - 1) // page_size)
-            page = max(1, min(page, total_pages))
-
-            start = (page - 1) * page_size
-            page_songs = all_objects[start:start + page_size]
-
-            return response_json(200, {
-                "page": page,
-                "total_pages": total_pages,
-                "total": total,
-                "page_size": page_size,
-                "songs": page_songs,
+            # 获取总数（简单处理，实际项目可以用HeadObject）
+            all_objects = s3_client.list_objects_v2(Bucket=bucket_name)
+            total_files = len(all_objects.get('Contents', []))
+        
+        files = []
+        if 'Contents' in response:
+            # 过滤音乐文件（支持mp3, wav, flac, m4a等）
+            music_extensions = {'.mp3', '.wav', '.flac', '.m4a', '.aac', '.ogg'}
+            for obj in response['Contents']:
+                key = obj['Key']
+                if any(key.lower().endswith(ext) for ext in music_extensions):
+                    files.append({
+                        'name': key.split('/')[-1] if '/' in key else key,
+                        'key': key,
+                        'size': obj['Size'],
+                        'last_modified': obj['LastModified'].isoformat()
+                    })
+        
+        # 计算总页数
+        total_pages = (total_files + per_page - 1) // per_page
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'files': files,
+                'page': page,
+                'per_page': per_page,
+                'total': total_files,
+                'total_pages': total_pages
             })
-
-        except Exception as e:
-            return response_json(500, {"error": str(e)})
-
-    def handle_play(self, request):
-        try:
-            url = urlparse(request.get("path", ""))
-            query = parse_qs(url.query)
-            file_key = query.get("file", [""])[0]
-            file_key = unquote(file_key)
-
-            if not file_key:
-                return response_json(400, {"error": "缺少 file 参数"})
-
-            presigned_url = s3.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": BUCKET, "Key": file_key},
-                ExpiresIn=7200,
-            )
-
-            return response_json(200, {
-                "url": presigned_url,
-                "file": file_key,
-                "expires_in": 7200,
-            })
-
-        except Exception as e:
-            return response_json(500, {"error": str(e)})
-
-
-# ========== Vercel 入口: 模块级变量 ==========
-handler = Handler()
+        }
+        
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({'error': str(e)})
+        }
