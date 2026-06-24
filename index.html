@@ -27,7 +27,6 @@
             box-shadow: 0 12px 40px rgba(0,0,0,0.08);
             padding: 24px 20px 32px;
         }
-        /* 搜索框 */
         .search-box {
             display: flex;
             gap: 10px;
@@ -80,7 +79,6 @@
         .search-results-info.visible {
             display: block;
         }
-        /* 播放器 */
         .player-card {
             background: #f8faff;
             border-radius: 24px;
@@ -92,7 +90,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
             margin-bottom: 16px;
         }
         .track-name {
@@ -109,49 +106,30 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 18px;
+            gap: 16px;
             margin-bottom: 4px;
         }
         .player-controls button {
             background: none;
             border: none;
-            font-size: 1.6rem;
+            font-size: 1.5rem;
             cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 50%;
-            transition: 0.15s;
+            padding: 0;
             color: #1f2a44;
-            background: #eef2f7;
+            width: 48px;
+            height: 48px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 52px;
-            height: 52px;
+            border-radius: 50%;
+            transition: 0.15s;
         }
         .player-controls button:active {
-            transform: scale(0.92);
-            background: #dce2ec;
-        }
-        .player-controls button.primary {
-            background: #3b82f6;
-            color: white;
-            font-size: 1.8rem;
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-            width: 60px;
-            height: 60px;
-        }
-        .player-controls button.primary:active {
-            background: #2563eb;
+            transform: scale(0.88);
+            background: rgba(0,0,0,0.05);
         }
         .player-controls button.mode-active {
-            background: #3b82f6;
-            color: white;
-        }
-        .player-controls .mode-btn {
-            font-size: 1.2rem;
-            width: 48px;
-            height: 48px;
-            background: #eef2f7;
+            color: #3b82f6;
         }
         audio {
             width: 100%;
@@ -160,16 +138,14 @@
             outline: none;
             background: #eef2f7;
         }
-        /* 列表 */
         .file-list-header {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
             margin: 18px 0 12px;
         }
-        .file-list-header h2 {
-            font-size: 1.0rem;
-            font-weight: 500;
+        .file-list-header span {
+            font-size: 0.95rem;
             color: #1f2a44;
         }
         .badge {
@@ -346,21 +322,7 @@
             .file-item { padding: 10px 12px; }
             .file-item .file-name { max-width: 50%; font-size: 0.9rem; }
             .player-controls { gap: 12px; }
-            .player-controls button { 
-                font-size: 1.3rem; 
-                width: 44px; 
-                height: 44px; 
-            }
-            .player-controls button.primary {
-                width: 52px;
-                height: 52px;
-                font-size: 1.5rem;
-            }
-            .player-controls .mode-btn {
-                width: 40px;
-                height: 40px;
-                font-size: 1.0rem;
-            }
+            .player-controls button { font-size: 1.3rem; width: 44px; height: 44px; }
             .search-box input { font-size: 0.9rem; padding: 10px 14px; }
         }
     </style>
@@ -381,9 +343,9 @@
         </div>
         
         <div class="player-controls">
-            <button id="modeBtn" class="mode-btn" title="播放模式">🔁</button>
+            <button id="modeBtn" title="播放模式">🔁</button>
             <button id="prevBtn" title="上一曲">⏮</button>
-            <button id="playPauseBtn" class="primary" title="播放/暂停">▶</button>
+            <button id="playPauseBtn" title="播放/暂停">▶</button>
             <button id="nextBtn" title="下一曲">⏭</button>
         </div>
         
@@ -392,7 +354,7 @@
 
     <!-- 文件列表 -->
     <div class="file-list-header">
-        <span style="font-size:0.95rem; color:#1f2a44;">🎵 歌曲列表</span>
+        <span>🎵 歌曲列表</span>
         <span class="badge" id="totalBadge">0 首</span>
     </div>
 
@@ -450,7 +412,6 @@
         let totalPages = 0;
         let currentTrackIndex = -1;
         let isPlaying = false;
-        let globalAudioContext = null;
         let toastTimer = null;
         let searchQuery = '';
         let playMode = 'sequential';
@@ -467,38 +428,6 @@
                 toast.classList.remove('show');
                 toastTimer = null;
             }, duration);
-        }
-
-        function initAudioContext() {
-            if (!globalAudioContext) {
-                try {
-                    globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    if (globalAudioContext.state === 'suspended') {
-                        globalAudioContext.resume();
-                    }
-                } catch (e) {
-                    console.log('AudioContext init error:', e);
-                }
-            }
-            return globalAudioContext;
-        }
-
-        document.addEventListener('click', function initAudioOnClick() {
-            initAudioContext();
-        }, { once: true });
-        document.addEventListener('touchstart', function initAudioOnTouch() {
-            initAudioContext();
-        }, { once: true });
-
-        function showError(msg) {
-            errorMsgEl.style.display = 'block';
-            errorMsgEl.textContent = '❌ ' + msg;
-            loadingEl.style.display = 'none';
-            fileListEl.style.display = 'none';
-        }
-
-        function hideError() {
-            errorMsgEl.style.display = 'none';
         }
 
         function getDisplayName(fullPath) {
@@ -568,7 +497,7 @@
         async function fetchFileList() {
             loadingEl.style.display = 'block';
             fileListEl.style.display = 'none';
-            hideError();
+            errorMsgEl.style.display = 'none';
 
             try {
                 const response = await fetch('/api/music?action=list&t=' + Date.now());
@@ -601,7 +530,8 @@
 
             } catch (err) {
                 console.error('[fetchFileList]', err);
-                showError(err.message || '无法加载音乐列表，请检查网络或配置');
+                errorMsgEl.style.display = 'block';
+                errorMsgEl.textContent = '❌ ' + err.message;
                 loadingEl.style.display = 'none';
                 fileListEl.style.display = 'none';
                 totalBadge.textContent = '0 首';
@@ -670,6 +600,7 @@
             pageIndicator.textContent = `${page + 1} / ${totalPages || 1}`;
         }
 
+        // 核心播放函数 - 简化版，更稳定
         async function playTrack(index, btnElement) {
             if (index < 0 || index >= allFiles.length) {
                 console.error('Invalid index:', index);
@@ -684,6 +615,7 @@
             
             currentTrackIndex = index;
             
+            // 更新 UI 状态
             document.querySelectorAll('.file-item').forEach((el) => {
                 const btn = el.querySelector('.play-btn');
                 if (btn) {
@@ -705,8 +637,7 @@
             });
 
             try {
-                initAudioContext();
-                
+                // 获取预签名链接
                 let presignedUrl = presignedCache.get(filePath);
                 if (!presignedUrl) {
                     const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
@@ -721,7 +652,50 @@
                     presignedCache.set(filePath, presignedUrl);
                 }
 
-                const response = await fetch(presignedUrl);
+                // 方法1: 直接使用预签名URL播放 (更稳定)
+                audioPlayer.src = presignedUrl;
+                audioPlayer.load();
+                
+                const playPromise = audioPlayer.play();
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
+                            updatePlayPauseButton(true);
+                            isPlaying = true;
+                            
+                            document.querySelectorAll('.play-btn').forEach(b => {
+                                const idx = parseInt(b.dataset.index);
+                                b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
+                                b.disabled = false;
+                                b.classList.toggle('playing', idx === index);
+                            });
+                        })
+                        .catch((error) => {
+                            console.warn('Direct play failed, trying blob method:', error);
+                            // 方法2: 使用 fetch + Blob (备用)
+                            tryPlayWithBlob(presignedUrl, filePath, index, btnElement);
+                        });
+                }
+
+            } catch (err) {
+                console.error('[playTrack]', err);
+                document.querySelectorAll('.play-btn').forEach(b => {
+                    const idx = parseInt(b.dataset.index);
+                    if (idx === index) {
+                        b.textContent = '▶ 播放';
+                        b.disabled = false;
+                        b.classList.remove('playing');
+                    }
+                });
+                showToast('加载失败，请重试', 1500);
+            }
+        }
+
+        // 备用播放方法：使用 Blob URL
+        async function tryPlayWithBlob(url, filePath, index, btnElement) {
+            try {
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`获取音频数据失败: ${response.status}`);
                 }
@@ -749,49 +723,28 @@
                                 b.classList.toggle('playing', idx === index);
                             });
                         })
-                        .catch(async (error) => {
-                            console.warn('Play failed, retrying with direct URL:', error);
-                            try {
-                                audioPlayer.src = presignedUrl;
-                                audioPlayer.load();
-                                await audioPlayer.play();
-                                currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-                                updatePlayPauseButton(true);
-                                isPlaying = true;
-                                document.querySelectorAll('.play-btn').forEach(b => {
-                                    const idx = parseInt(b.dataset.index);
-                                    b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
-                                    b.disabled = false;
-                                    b.classList.toggle('playing', idx === index);
-                                });
-                            } catch (err) {
-                                console.error('Direct play also failed:', err);
-                                if (btnElement) {
-                                    btnElement.textContent = '▶ 播放';
-                                    btnElement.disabled = false;
-                                }
-                                showToast('加载失败，请重试', 1500);
+                        .catch((err) => {
+                            console.error('Blob play also failed:', err);
+                            if (btnElement) {
+                                btnElement.textContent = '▶ 播放';
+                                btnElement.disabled = false;
                             }
+                            showToast('播放失败，请重试', 1500);
                         });
                 }
-
             } catch (err) {
-                console.error('[playTrack]', err);
-                document.querySelectorAll('.play-btn').forEach(b => {
-                    const idx = parseInt(b.dataset.index);
-                    if (idx === index) {
-                        b.textContent = '▶ 播放';
-                        b.disabled = false;
-                        b.classList.remove('playing');
-                    }
-                });
-                showToast('加载失败，请重试', 1500);
+                console.error('Blob method error:', err);
+                if (btnElement) {
+                    btnElement.textContent = '▶ 播放';
+                    btnElement.disabled = false;
+                }
+                showToast('播放失败，请重试', 1500);
             }
         }
 
         function togglePlayPause() {
             if (audioPlayer.paused) {
-                audioPlayer.play();
+                audioPlayer.play().catch(() => {});
                 updatePlayPauseButton(true);
                 isPlaying = true;
                 document.querySelectorAll('.play-btn').forEach(b => {
@@ -820,7 +773,7 @@
         }
 
         function playPrevious() {
-            if (allFiles.length === 0) return;
+            if (allFiles.length === 0 || currentTrackIndex < 0) return;
             let newIndex;
             if (playMode === 'random') {
                 newIndex = getRandomTrack();
@@ -832,7 +785,7 @@
         }
 
         function playNext() {
-            if (allFiles.length === 0) return;
+            if (allFiles.length === 0 || currentTrackIndex < 0) return;
             let newIndex;
             if (playMode === 'random') {
                 newIndex = getRandomTrack();
@@ -865,6 +818,9 @@
             
             modeBtn.textContent = icons[nextIdx];
             modeBtn.title = labels[nextIdx];
+            
+            // 高亮当前模式
+            document.querySelectorAll('.player-controls button').forEach(b => b.classList.remove('mode-active'));
             modeBtn.classList.add('mode-active');
             
             showToast(labels[nextIdx], 1500);
@@ -873,7 +829,7 @@
         function setupAudioEvents() {
             audioPlayer.addEventListener('ended', () => {
                 if (playMode === 'repeat-one') {
-                    audioPlayer.play();
+                    audioPlayer.play().catch(() => {});
                 } else {
                     playNext();
                 }
@@ -892,6 +848,11 @@
             audioPlayer.addEventListener('pause', () => {
                 updatePlayPauseButton(false);
                 isPlaying = false;
+            });
+            
+            audioPlayer.addEventListener('error', (e) => {
+                console.error('Audio error:', e);
+                // 不要弹出错误，让用户重试
             });
         }
 
