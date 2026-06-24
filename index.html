@@ -407,7 +407,10 @@
         let toastTimer = null;
         let searchQuery = '';
         let playMode = 'sequential';
-        const presignedCache = new Map();
+        
+        // 缓存音乐文件数据 (Blob URL)
+        const audioCache = new Map(); // key: filePath, value: { blobUrl, timestamp }
+        const CACHE_DURATION = 30 * 60 * 1000; // 30分钟缓存有效期
 
         function showToast(message, duration = 2000) {
             if (toastTimer) {
@@ -426,6 +429,46 @@
             if (!fullPath) return '未知';
             const parts = fullPath.split('/');
             return parts[parts.length - 1] || fullPath;
+        }
+
+        function getFileExtension(filename) {
+            return filename.split('.').pop().toLowerCase();
+        }
+
+        function getMimeType(filename) {
+            const ext = getFileExtension(filename);
+            const mimeMap = {
+                'mp3': 'audio/mpeg',
+                'm4a': 'audio/mp4',
+                'aac': 'audio/aac',
+                'flac': 'audio/flac',
+                'wav': 'audio/wav',
+                'ogg': 'audio/ogg',
+                'opus': 'audio/opus'
+            };
+            return mimeMap[ext] || 'audio/mpeg';
+        }
+
+        // 清除缓存（切换歌曲时调用）
+        function clearAudioCache() {
+            // 释放所有 Blob URL
+            for (const [key, value] of audioCache) {
+                if (value.blobUrl) {
+                    URL.revokeObjectURL(value.blobUrl);
+                }
+            }
+            audioCache.clear();
+            console.log('音频缓存已清除');
+        }
+
+        // 清除单首歌曲缓存
+        function clearSingleCache(filePath) {
+            const cached = audioCache.get(filePath);
+            if (cached && cached.blobUrl) {
+                URL.revokeObjectURL(cached.blobUrl);
+                audioCache.delete(filePath);
+                console.log('已清除缓存:', filePath);
+            }
         }
 
         function getCurrentFileList() {
@@ -574,7 +617,56 @@
             pageIndicator.textContent = `${page + 1} / ${totalPages || 1}`;
         }
 
-        // 简化播放函数 - 直接使用预签名链接
+        // 获取音频数据（带缓存）
+        async function getAudioData(filePath) {
+            // 检查缓存
+            const cached = audioCache.get(filePath);
+            if (cached) {
+                // 检查是否过期
+                if (Date.now() - cached.timestamp < CACHE_DURATION) {
+                    console.log('使用缓存:', filePath);
+                    return cached.blobUrl;
+                } else {
+                    // 缓存过期，清除
+                    URL.revokeObjectURL(cached.blobUrl);
+                    audioCache.delete(filePath);
+                    console.log('缓存已过期:', filePath);
+                }
+            }
+
+            console.log('获取新数据:', filePath);
+            
+            // 获取预签名链接
+            const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
+            if (!resp.ok) {
+                throw new Error(`获取播放链接失败 (${resp.status})`);
+            }
+            const data = await resp.json();
+            if (!data.success || !data.url) {
+                throw new Error(data.message || '预签名链接无效');
+            }
+
+            // 下载音频数据
+            const audioResp = await fetch(data.url);
+            if (!audioResp.ok) {
+                throw new Error(`下载音频失败: ${audioResp.status}`);
+            }
+
+            const audioData = await audioResp.arrayBuffer();
+            const mimeType = getMimeType(filePath);
+            const blob = new Blob([audioData], { type: mimeType });
+            const blobUrl = URL.createObjectURL(blob);
+
+            // 存入缓存
+            audioCache.set(filePath, {
+                blobUrl: blobUrl,
+                timestamp: Date.now()
+            });
+
+            return blobUrl;
+        }
+
+        // 播放歌曲
         async function playTrack(index, btnElement) {
             if (index < 0 || index >= allFiles.length) {
                 console.error('Invalid index:', index);
@@ -585,6 +677,12 @@
             if (!filePath) {
                 console.error('No file at index:', index);
                 return;
+            }
+            
+            // 如果切换歌曲，清除之前的缓存（但保留当前歌曲的缓存用于单曲循环）
+            if (currentTrackIndex !== -1 && currentTrackIndex !== index) {
+                // 切换歌曲时清除所有缓存
+                clearAudioCache();
             }
             
             currentTrackIndex = index;
@@ -611,25 +709,14 @@
             });
 
             try {
-                // 获取预签名链接（缓存）
-                let presignedUrl = presignedCache.get(filePath);
-                if (!presignedUrl) {
-                    const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
-                    if (!resp.ok) {
-                        throw new Error(`获取播放链接失败 (${resp.status})`);
-                    }
-                    const data = await resp.json();
-                    if (!data.success || !data.url) {
-                        throw new Error(data.message || '预签名链接无效');
-                    }
-                    presignedUrl = data.url;
-                    presignedCache.set(filePath, presignedUrl);
-                }
-
-                // 直接播放预签名链接
-                audioPlayer.src = presignedUrl;
+                // 获取音频数据（从缓存或下载）
+                const blobUrl = await getAudioData(filePath);
+                
+                // 设置音频源
+                audioPlayer.src = blobUrl;
                 audioPlayer.load();
                 
+                // 等待加载完成后播放
                 const playPromise = audioPlayer.play();
                 if (playPromise !== undefined) {
                     playPromise
@@ -647,11 +734,25 @@
                         })
                         .catch((error) => {
                             console.warn('Play failed:', error);
-                            if (btnElement) {
-                                btnElement.textContent = '▶ 播放';
-                                btnElement.disabled = false;
+                            // 等待加载完成后自动播放
+                            audioPlayer.addEventListener('canplay', function onCanPlay() {
+                                audioPlayer.removeEventListener('canplay', onCanPlay);
+                                audioPlayer.play().catch(() => {});
+                            });
+                            
+                            // 如果已经可以播放了，直接播放
+                            if (audioPlayer.readyState >= 2) {
+                                audioPlayer.play().catch(() => {});
                             }
-                            // 不弹提示，用户可重试
+                            
+                            // 更新按钮状态为已加载
+                            document.querySelectorAll('.play-btn').forEach(b => {
+                                const idx = parseInt(b.dataset.index);
+                                if (idx === index) {
+                                    b.textContent = '▶ 播放';
+                                    b.disabled = false;
+                                }
+                            });
                         });
                 }
 
@@ -708,6 +809,10 @@
                 newIndex = currentTrackIndex - 1;
                 if (newIndex < 0) newIndex = allFiles.length - 1;
             }
+            // 切换歌曲时清除缓存
+            if (newIndex !== currentTrackIndex) {
+                clearAudioCache();
+            }
             playTrack(newIndex);
         }
 
@@ -721,6 +826,10 @@
             } else {
                 newIndex = currentTrackIndex + 1;
                 if (newIndex >= allFiles.length) newIndex = 0;
+            }
+            // 切换歌曲时清除缓存（单曲循环除外）
+            if (newIndex !== currentTrackIndex) {
+                clearAudioCache();
             }
             playTrack(newIndex);
         }
@@ -755,6 +864,8 @@
         function setupAudioEvents() {
             audioPlayer.addEventListener('ended', () => {
                 if (playMode === 'repeat-one') {
+                    // 单曲循环：使用缓存的 Blob URL 重新播放
+                    audioPlayer.currentTime = 0;
                     audioPlayer.play().catch(() => {});
                 } else {
                     playNext();
@@ -774,6 +885,20 @@
             audioPlayer.addEventListener('pause', () => {
                 updatePlayPauseButton(false);
                 isPlaying = false;
+            });
+            
+            // 播放错误时尝试重新加载
+            audioPlayer.addEventListener('error', (e) => {
+                console.error('Audio error:', e);
+                // 如果当前歌曲有缓存，尝试重新播放
+                if (currentTrackIndex >= 0) {
+                    const filePath = allFiles[currentTrackIndex];
+                    if (filePath && audioCache.has(filePath)) {
+                        // 缓存可能已损坏，清除并重新加载
+                        clearSingleCache(filePath);
+                        playTrack(currentTrackIndex);
+                    }
+                }
             });
         }
 
