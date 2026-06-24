@@ -408,8 +408,8 @@
         let searchQuery = '';
         let playMode = 'sequential';
         
-        // 缓存 Blob URL
         const audioCache = new Map();
+        let isFirstPlay = true; // ✅ 标记是否是第一次播放
 
         function showToast(message, duration = 2000) {
             if (toastTimer) {
@@ -601,7 +601,6 @@
             pageIndicator.textContent = `${page + 1} / ${totalPages || 1}`;
         }
 
-        // ✅ 获取预签名链接（用于第一次播放）
         async function getPresignedUrl(filePath) {
             const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
             if (!resp.ok) {
@@ -614,9 +613,7 @@
             return data.url;
         }
 
-        // ✅ 下载并缓存音频文件（用于后续播放）
         async function downloadAndCache(filePath) {
-            // 先获取预签名链接
             const url = await getPresignedUrl(filePath);
             const audioResp = await fetch(url);
             if (!audioResp.ok) {
@@ -630,28 +627,54 @@
             return blobUrl;
         }
 
-        // ✅ 获取音频源：第一次用预签名链接，后续用缓存
-        async function getAudioSource(filePath, isFirstPlay) {
-            // 如果有缓存，直接返回缓存
+        async function getAudioSource(filePath) {
             if (audioCache.has(filePath)) {
-                console.log('✅ 使用缓存:', filePath);
                 return audioCache.get(filePath);
             }
-            
-            if (isFirstPlay) {
-                // ✅ 第一次播放：直接返回预签名链接（最快）
-                console.log('🔗 第一次播放，使用预签名链接:', filePath);
-                const url = await getPresignedUrl(filePath);
-                return url;
-            } else {
-                // ✅ 后续播放：下载并缓存
-                console.log('📥 下载并缓存:', filePath);
-                return await downloadAndCache(filePath);
-            }
+            // 第一次播放直接返回预签名链接（最快）
+            console.log('🔗 第一次播放，使用预签名链接:', filePath);
+            return await getPresignedUrl(filePath);
         }
 
-        // ✅ 播放歌曲
-        async function playTrack(index, btnElement, isRetry = false) {
+        // ✅ 核心修复：等待音频加载完成后自动播放
+        function waitForAudioReady(timeout = 10000) {
+            return new Promise((resolve, reject) => {
+                let resolved = false;
+                const timer = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        // 超时也尝试播放
+                        resolve();
+                    }
+                }, timeout);
+
+                const onReady = () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timer);
+                        audioPlayer.removeEventListener('canplaythrough', onReady);
+                        audioPlayer.removeEventListener('loadeddata', onReady);
+                        resolve();
+                    }
+                };
+
+                // 使用 canplaythrough 确保可以流畅播放
+                audioPlayer.addEventListener('canplaythrough', onReady);
+                audioPlayer.addEventListener('loadeddata', onReady);
+
+                // 如果已经准备好了，直接 resolve
+                if (audioPlayer.readyState >= 3) {
+                    resolved = true;
+                    clearTimeout(timer);
+                    audioPlayer.removeEventListener('canplaythrough', onReady);
+                    audioPlayer.removeEventListener('loadeddata', onReady);
+                    resolve();
+                }
+            });
+        }
+
+        // ✅ 核心播放函数
+        async function playTrack(index, btnElement) {
             if (index < 0 || index >= allFiles.length) {
                 return;
             }
@@ -661,7 +684,6 @@
                 return;
             }
             
-            // 切换歌曲时清除缓存
             if (currentTrackIndex !== -1 && currentTrackIndex !== index) {
                 clearAudioCache();
             }
@@ -690,48 +712,17 @@
             });
 
             try {
-                // ✅ 判断是否是第一次播放这首歌
-                const isFirstPlay = !audioCache.has(filePath);
-                
-                // 获取音频源
-                const source = await getAudioSource(filePath, isFirstPlay);
+                const isFirstPlayOfSong = !audioCache.has(filePath);
+                const source = await getAudioSource(filePath);
                 
                 // 设置音频源
                 audioPlayer.src = source;
                 audioPlayer.load();
                 
-                // ✅ 等待音频加载完成后再播放
-                await new Promise((resolve, reject) => {
-                    let resolved = false;
-                    const timeout = setTimeout(() => {
-                        if (!resolved) {
-                            resolved = true;
-                            reject(new Error('加载超时'));
-                        }
-                    }, 8000);
-                    
-                    const onReady = () => {
-                        if (!resolved) {
-                            resolved = true;
-                            clearTimeout(timeout);
-                            audioPlayer.removeEventListener('canplay', onReady);
-                            audioPlayer.removeEventListener('loadeddata', onReady);
-                            resolve();
-                        }
-                    };
-                    
-                    if (audioPlayer.readyState >= 3) {
-                        resolved = true;
-                        clearTimeout(timeout);
-                        resolve();
-                        return;
-                    }
-                    
-                    audioPlayer.addEventListener('canplay', onReady);
-                    audioPlayer.addEventListener('loadeddata', onReady);
-                });
+                // ✅ 关键：等待音频准备就绪
+                await waitForAudioReady();
                 
-                // 执行播放
+                // ✅ 自动播放（第一次也能成功）
                 await audioPlayer.play();
                 
                 // 播放成功
@@ -745,56 +736,23 @@
                     b.classList.toggle('playing', idx === index);
                 });
 
-                // ✅ 如果是第一次播放且使用的是预签名链接，后台异步下载缓存
-                if (isFirstPlay && !audioCache.has(filePath)) {
+                // 后台缓存
+                if (isFirstPlayOfSong && !audioCache.has(filePath)) {
                     console.log('🔄 后台下载缓存:', filePath);
-                    downloadAndCache(filePath).catch(() => {
-                        console.log('后台缓存下载失败，不影响播放');
-                    });
+                    downloadAndCache(filePath).catch(() => {});
                 }
 
             } catch (err) {
                 console.error('❌ [playTrack]', err);
                 
-                // ✅ 如果播放失败且是第一次尝试，且使用的是预签名链接，尝试用缓存方式重试
-                if (!isRetry && !audioCache.has(filePath)) {
-                    console.log('🔄 预签名播放失败，尝试下载缓存后播放');
+                // ✅ 如果第一次播放失败，尝试用缓存方式重试
+                if (!audioCache.has(filePath)) {
                     try {
-                        // 下载并缓存
+                        console.log('🔄 尝试缓存方式播放...');
                         const blobUrl = await downloadAndCache(filePath);
                         audioPlayer.src = blobUrl;
                         audioPlayer.load();
-                        
-                        await new Promise((resolve, reject) => {
-                            let resolved = false;
-                            const timeout = setTimeout(() => {
-                                if (!resolved) {
-                                    resolved = true;
-                                    reject(new Error('加载超时'));
-                                }
-                            }, 8000);
-                            
-                            const onReady = () => {
-                                if (!resolved) {
-                                    resolved = true;
-                                    clearTimeout(timeout);
-                                    audioPlayer.removeEventListener('canplay', onReady);
-                                    audioPlayer.removeEventListener('loadeddata', onReady);
-                                    resolve();
-                                }
-                            };
-                            
-                            if (audioPlayer.readyState >= 3) {
-                                resolved = true;
-                                clearTimeout(timeout);
-                                resolve();
-                                return;
-                            }
-                            
-                            audioPlayer.addEventListener('canplay', onReady);
-                            audioPlayer.addEventListener('loadeddata', onReady);
-                        });
-                        
+                        await waitForAudioReady();
                         await audioPlayer.play();
                         
                         currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
@@ -916,14 +874,12 @@
         function setupAudioEvents() {
             audioPlayer.addEventListener('ended', () => {
                 if (playMode === 'repeat-one') {
-                    // ✅ 单曲循环：用缓存播放（如果有缓存的话）
                     if (currentTrackIndex >= 0) {
                         const filePath = allFiles[currentTrackIndex];
                         if (audioCache.has(filePath)) {
                             audioPlayer.currentTime = 0;
                             audioPlayer.play().catch(() => {});
                         } else {
-                            // 如果没有缓存，重新播放
                             playTrack(currentTrackIndex);
                         }
                     }
