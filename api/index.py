@@ -3,7 +3,7 @@ import os
 import boto3
 from botocore.config import Config
 
-def handler(request):
+def app(request):
     try:
         # 获取环境变量
         bucket_name = os.environ.get('R2_BUCKET_NAME')
@@ -14,6 +14,10 @@ def handler(request):
         if not all([bucket_name, access_key, secret_key, account_id]):
             return {
                 'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
                 'body': json.dumps({'error': 'Missing R2 configuration'})
             }
         
@@ -32,41 +36,29 @@ def handler(request):
         page = int(query_params.get('page', 1))
         per_page = 10
         
-        # 计算起始位置
-        start_index = (page - 1) * per_page
+        # 获取所有对象
+        all_objects = s3_client.list_objects_v2(Bucket=bucket_name)
+        all_files = all_objects.get('Contents', [])
         
-        # 列出所有对象
-        response = s3_client.list_objects_v2(
-            Bucket=bucket_name,
-            MaxKeys=per_page,
-            StartAfter='' if page == 1 else None
-        )
+        # 过滤音乐文件
+        music_extensions = {'.mp3', '.wav', '.flac', '.m4a', '.aac', '.ogg'}
+        music_files = []
+        for obj in all_files:
+            key = obj['Key']
+            if any(key.lower().endswith(ext) for ext in music_extensions):
+                music_files.append({
+                    'name': key.split('/')[-1] if '/' in key else key,
+                    'key': key,
+                    'size': obj['Size'],
+                    'last_modified': obj['LastModified'].isoformat()
+                })
         
-        # 如果是第一页，获取所有文件用于计算总数
-        if page == 1:
-            all_objects = s3_client.list_objects_v2(Bucket=bucket_name)
-            total_files = len(all_objects.get('Contents', []))
-        else:
-            # 获取总数（简单处理，实际项目可以用HeadObject）
-            all_objects = s3_client.list_objects_v2(Bucket=bucket_name)
-            total_files = len(all_objects.get('Contents', []))
-        
-        files = []
-        if 'Contents' in response:
-            # 过滤音乐文件（支持mp3, wav, flac, m4a等）
-            music_extensions = {'.mp3', '.wav', '.flac', '.m4a', '.aac', '.ogg'}
-            for obj in response['Contents']:
-                key = obj['Key']
-                if any(key.lower().endswith(ext) for ext in music_extensions):
-                    files.append({
-                        'name': key.split('/')[-1] if '/' in key else key,
-                        'key': key,
-                        'size': obj['Size'],
-                        'last_modified': obj['LastModified'].isoformat()
-                    })
-        
-        # 计算总页数
+        # 计算分页
+        total_files = len(music_files)
         total_pages = (total_files + per_page - 1) // per_page
+        start = (page - 1) * per_page
+        end = start + per_page
+        page_files = music_files[start:end]
         
         return {
             'statusCode': 200,
@@ -75,7 +67,7 @@ def handler(request):
                 'Access-Control-Allow-Origin': '*'
             },
             'body': json.dumps({
-                'files': files,
+                'files': page_files,
                 'page': page,
                 'per_page': per_page,
                 'total': total_files,
@@ -87,6 +79,7 @@ def handler(request):
         return {
             'statusCode': 500,
             'headers': {
+                'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
             'body': json.dumps({'error': str(e)})
