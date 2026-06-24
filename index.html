@@ -408,7 +408,7 @@
         let searchQuery = '';
         let playMode = 'sequential';
         
-        // 缓存音乐文件数据 (Blob URL)
+        // 缓存 Blob URL
         const audioCache = new Map();
 
         function showToast(message, duration = 2000) {
@@ -448,12 +448,9 @@
             return mimeMap[ext] || 'audio/mpeg';
         }
 
-        // 清除所有缓存
         function clearAudioCache() {
             for (const [key, blobUrl] of audioCache) {
-                try {
-                    URL.revokeObjectURL(blobUrl);
-                } catch(e) {}
+                try { URL.revokeObjectURL(blobUrl); } catch(e) {}
             }
             audioCache.clear();
             console.log('音频缓存已清除');
@@ -607,7 +604,6 @@
 
         // 获取音频数据（带缓存）
         async function getAudioData(filePath) {
-            // 检查缓存
             if (audioCache.has(filePath)) {
                 console.log('✅ 使用缓存:', filePath);
                 return audioCache.get(filePath);
@@ -615,7 +611,6 @@
 
             console.log('📥 下载新数据:', filePath);
             
-            // 获取预签名链接
             const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
             if (!resp.ok) {
                 throw new Error(`获取播放链接失败 (${resp.status})`);
@@ -627,7 +622,6 @@
 
             console.log('🔗 预签名链接获取成功');
 
-            // 下载音频数据
             const audioResp = await fetch(data.url);
             if (!audioResp.ok) {
                 throw new Error(`下载音频失败: ${audioResp.status}`);
@@ -638,14 +632,13 @@
             const blob = new Blob([audioData], { type: mimeType });
             const blobUrl = URL.createObjectURL(blob);
 
-            // 存入缓存
             audioCache.set(filePath, blobUrl);
             console.log('💾 已缓存:', filePath);
 
             return blobUrl;
         }
 
-        // 播放歌曲
+        // ✅ 核心修复：确保第一次点击也能自动播放
         async function playTrack(index, btnElement) {
             if (index < 0 || index >= allFiles.length) {
                 console.error('Invalid index:', index);
@@ -658,7 +651,7 @@
                 return;
             }
             
-            // 如果切换歌曲，清除之前的缓存
+            // 切换歌曲时清除缓存
             if (currentTrackIndex !== -1 && currentTrackIndex !== index) {
                 clearAudioCache();
             }
@@ -687,80 +680,98 @@
             });
 
             try {
-                // 获取音频数据（从缓存或下载）
+                // 获取音频数据
                 const blobUrl = await getAudioData(filePath);
                 
                 // 设置音频源
                 audioPlayer.src = blobUrl;
                 audioPlayer.load();
                 
-                // 等待加载完成后播放
-                const playPromise = audioPlayer.play();
-                if (playPromise !== undefined) {
-                    playPromise
-                        .then(() => {
-                            currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-                            updatePlayPauseButton(true);
-                            isPlaying = true;
-                            
-                            document.querySelectorAll('.play-btn').forEach(b => {
-                                const idx = parseInt(b.dataset.index);
-                                b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
-                                b.disabled = false;
-                                b.classList.toggle('playing', idx === index);
-                            });
-                            console.log('▶️ 播放成功:', filePath);
-                        })
-                        .catch((error) => {
-                            console.warn('⚠️ 播放失败，等待加载完成:', error);
-                            // 等待加载完成后自动播放
-                            const onCanPlay = () => {
-                                audioPlayer.removeEventListener('canplay', onCanPlay);
-                                audioPlayer.play()
-                                    .then(() => {
-                                        currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-                                        updatePlayPauseButton(true);
-                                        isPlaying = true;
-                                        document.querySelectorAll('.play-btn').forEach(b => {
-                                            const idx = parseInt(b.dataset.index);
-                                            b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
-                                            b.disabled = false;
-                                            b.classList.toggle('playing', idx === index);
-                                        });
-                                        console.log('▶️ 延迟播放成功:', filePath);
-                                    })
-                                    .catch(() => {});
-                            };
-                            audioPlayer.addEventListener('canplay', onCanPlay);
-                            
-                            // 如果已经可以播放了，直接播放
-                            if (audioPlayer.readyState >= 2) {
-                                audioPlayer.removeEventListener('canplay', onCanPlay);
-                                audioPlayer.play()
-                                    .then(() => {
-                                        currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-                                        updatePlayPauseButton(true);
-                                        isPlaying = true;
-                                        document.querySelectorAll('.play-btn').forEach(b => {
-                                            const idx = parseInt(b.dataset.index);
-                                            b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
-                                            b.disabled = false;
-                                            b.classList.toggle('playing', idx === index);
-                                        });
-                                        console.log('▶️ 立即播放成功:', filePath);
-                                    })
-                                    .catch(() => {});
+                // ✅ 关键修复：使用 Promise 包装，确保播放成功
+                const playAudio = () => {
+                    return new Promise((resolve, reject) => {
+                        const playPromise = audioPlayer.play();
+                        if (playPromise !== undefined) {
+                            playPromise
+                                .then(() => {
+                                    console.log('▶️ 播放成功:', filePath);
+                                    resolve(true);
+                                })
+                                .catch((error) => {
+                                    console.warn('⚠️ 播放失败，等待加载:', error);
+                                    reject(error);
+                                });
+                        } else {
+                            reject(new Error('play() 返回 undefined'));
+                        }
+                    });
+                };
+
+                // 尝试播放
+                try {
+                    await playAudio();
+                    // 播放成功，更新 UI
+                    currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
+                    updatePlayPauseButton(true);
+                    isPlaying = true;
+                    document.querySelectorAll('.play-btn').forEach(b => {
+                        const idx = parseInt(b.dataset.index);
+                        b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
+                        b.disabled = false;
+                        b.classList.toggle('playing', idx === index);
+                    });
+                } catch (firstError) {
+                    // ✅ 第一次播放失败，等待 canplay 事件后再试
+                    console.log('⏳ 等待音频加载完成...');
+                    
+                    await new Promise((resolve, reject) => {
+                        let resolved = false;
+                        let timeoutId = setTimeout(() => {
+                            if (!resolved) {
+                                resolved = true;
+                                reject(new Error('等待加载超时'));
                             }
-                            
-                            // 更新按钮状态
-                            document.querySelectorAll('.play-btn').forEach(b => {
-                                const idx = parseInt(b.dataset.index);
-                                if (idx === index) {
-                                    b.textContent = '▶ 播放';
-                                    b.disabled = false;
-                                }
-                            });
-                        });
+                        }, 10000); // 10秒超时
+                        
+                        const onCanPlay = () => {
+                            if (!resolved) {
+                                resolved = true;
+                                clearTimeout(timeoutId);
+                                audioPlayer.removeEventListener('canplay', onCanPlay);
+                                audioPlayer.removeEventListener('loadeddata', onCanPlay);
+                                resolve();
+                            }
+                        };
+                        
+                        audioPlayer.addEventListener('canplay', onCanPlay);
+                        audioPlayer.addEventListener('loadeddata', onCanPlay);
+                        
+                        // 如果已经可以播放了，立即 resolve
+                        if (audioPlayer.readyState >= 2) {
+                            if (!resolved) {
+                                resolved = true;
+                                clearTimeout(timeoutId);
+                                audioPlayer.removeEventListener('canplay', onCanPlay);
+                                audioPlayer.removeEventListener('loadeddata', onCanPlay);
+                                resolve();
+                            }
+                        }
+                    });
+                    
+                    // ✅ 等待完成后再次尝试播放
+                    console.log('🔄 重试播放...');
+                    await playAudio();
+                    
+                    // 播放成功，更新 UI
+                    currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
+                    updatePlayPauseButton(true);
+                    isPlaying = true;
+                    document.querySelectorAll('.play-btn').forEach(b => {
+                        const idx = parseInt(b.dataset.index);
+                        b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
+                        b.disabled = false;
+                        b.classList.toggle('playing', idx === index);
+                    });
                 }
 
             } catch (err) {
@@ -773,7 +784,7 @@
                         b.classList.remove('playing');
                     }
                 });
-                showToast('加载失败: ' + err.message, 2000);
+                showToast('加载失败，请重试', 1500);
             }
         }
 
@@ -893,16 +904,12 @@
             
             audioPlayer.addEventListener('error', (e) => {
                 console.error('❌ Audio error:', e);
-                // 清除当前歌曲缓存并重试
                 if (currentTrackIndex >= 0) {
                     const filePath = allFiles[currentTrackIndex];
                     if (filePath && audioCache.has(filePath)) {
-                        try {
-                            URL.revokeObjectURL(audioCache.get(filePath));
-                        } catch(ex) {}
+                        try { URL.revokeObjectURL(audioCache.get(filePath)); } catch(ex) {}
                         audioCache.delete(filePath);
                         console.log('🔄 清除缓存，重新加载:', filePath);
-                        // 延迟重试
                         setTimeout(() => {
                             playTrack(currentTrackIndex);
                         }, 500);
