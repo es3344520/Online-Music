@@ -108,7 +108,6 @@
             justify-content: center;
             gap: 16px;
             margin-bottom: 4px;
-            flex-wrap: wrap;
         }
         .player-controls button {
             background: none;
@@ -131,9 +130,6 @@
         }
         .player-controls button.mode-active {
             color: #3b82f6;
-        }
-        .player-controls button.eq-active {
-            color: #007aff;
         }
         audio {
             width: 100%;
@@ -219,10 +215,6 @@
         .file-item .play-btn.playing {
             background: #1e293b;
         }
-        .file-item .play-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
         .pagination {
             display: flex;
             justify-content: center;
@@ -277,16 +269,6 @@
             vertical-align: middle;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .error-msg {
-            background: #fee9e9;
-            color: #b3403a;
-            padding: 12px 16px;
-            border-radius: 20px;
-            margin: 10px 0;
-            font-size: 0.9rem;
-            border-left: 4px solid #e54848;
-            display: none;
-        }
         .no-results {
             text-align: center;
             padding: 30px 0;
@@ -297,253 +279,13 @@
         .no-results.visible {
             display: block;
         }
-        .toast {
-            position: fixed;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            z-index: 9999;
-            max-width: 80%;
-            text-align: center;
-            backdrop-filter: blur(8px);
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-        }
-        .toast.show {
-            opacity: 1;
-        }
-
-        /* ===== 均衡器弹窗 ===== */
-        .eq-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            z-index: 10000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .eq-overlay.active {
-            display: flex;
-        }
-        .eq-panel {
-            background: #1c1c1e;
-            border-radius: 28px;
-            padding: 24px 20px 20px;
-            max-width: 600px;
-            width: 100%;
-            max-height: 92vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-            scrollbar-width: thin;
-            scrollbar-color: #3a3a3c transparent;
-        }
-        .eq-panel::-webkit-scrollbar {
-            width: 4px;
-        }
-        .eq-panel::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .eq-panel::-webkit-scrollbar-thumb {
-            background: #3a3a3c;
-            border-radius: 4px;
-        }
-
-        .eq-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #2c2c2e;
-        }
-        .eq-title {
-            color: white;
-            font-size: 1.2rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .eq-title small {
-            font-size: 0.7rem;
-            font-weight: 400;
-            color: #8e8e93;
-        }
-        .eq-close {
-            background: none;
-            border: none;
-            color: #8e8e93;
-            font-size: 1.4rem;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 30px;
-            transition: 0.2s;
-        }
-        .eq-close:hover {
-            color: white;
-            background: #2c2c2e;
-        }
-
-        .eq-presets {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #2c2c2e;
-        }
-        .eq-preset-btn {
-            background: #2c2c2e;
-            border: none;
-            color: #aeaeb2;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            cursor: pointer;
-            transition: 0.2s;
-            white-space: nowrap;
-        }
-        .eq-preset-btn:hover {
-            background: #3a3a3c;
-            color: white;
-        }
-        .eq-preset-btn.active {
-            background: #007aff;
-            color: white;
-        }
-
-        .eq-sliders {
-            display: flex;
-            gap: 3px;
-            justify-content: space-between;
-            padding: 8px 0;
-        }
-        .eq-slider-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            flex: 1;
-            min-width: 0;
-        }
-        .eq-freq {
-            color: #8e8e93;
-            font-size: 0.55rem;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        .eq-slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100%;
-            height: 100px;
-            min-height: 60px;
-            max-height: 120px;
-            background: transparent;
-            cursor: pointer;
-            writing-mode: bt-lr;
-            -webkit-writing-mode: bt-lr;
-        }
-        .eq-slider::-webkit-slider-runnable-track {
-            width: 4px;
-            height: 100%;
-            background: #3a3a3c;
-            border-radius: 4px;
-        }
-        .eq-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #007aff;
-            cursor: pointer;
-            margin-top: calc(100px/2 - 9px);
-            box-shadow: 0 0 12px rgba(0,122,255,0.3);
-            transition: 0.15s;
-        }
-        .eq-slider::-webkit-slider-thumb:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 20px rgba(0,122,255,0.5);
-        }
-        .eq-slider::-moz-range-track {
-            width: 4px;
-            height: 100px;
-            background: #3a3a3c;
-            border-radius: 4px;
-            border: none;
-        }
-        .eq-slider::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #007aff;
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 0 12px rgba(0,122,255,0.3);
-        }
-        .eq-slider::-moz-range-thumb:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 20px rgba(0,122,255,0.5);
-        }
-        .eq-value {
-            color: #8e8e93;
-            font-size: 0.55rem;
-            min-width: 20px;
-            text-align: center;
-            font-weight: 500;
-        }
-        .eq-value.active {
-            color: #007aff;
-        }
-
-        .eq-footer {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #2c2c2e;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .eq-status {
-            color: #8e8e93;
-            font-size: 0.8rem;
-        }
-        .eq-status .highlight {
-            color: #007aff;
-            font-weight: 500;
-        }
-
         @media (max-width: 480px) {
             .container { padding: 16px; }
             .file-item { padding: 10px 12px; }
             .file-item .file-name { max-width: 50%; font-size: 0.9rem; }
-            .player-controls { gap: 10px; }
-            .player-controls button { font-size: 1.2rem; width: 40px; height: 40px; }
+            .player-controls { gap: 12px; }
+            .player-controls button { font-size: 1.3rem; width: 44px; height: 44px; }
             .search-box input { font-size: 0.9rem; padding: 10px 14px; }
-            .eq-panel { padding: 16px 12px; }
-            .eq-preset-btn { font-size: 0.6rem; padding: 4px 10px; }
-            .eq-slider { height: 70px; min-height: 50px; }
-            .eq-slider::-webkit-slider-thumb { width: 14px; height: 14px; margin-top: calc(70px/2 - 7px); }
-            .eq-freq { font-size: 0.45rem; }
-            .eq-value { font-size: 0.45rem; min-width: 16px; }
-            .eq-title { font-size: 1rem; }
-            .eq-sliders { gap: 2px; }
         }
     </style>
 </head>
@@ -564,9 +306,8 @@
             <button id="prevBtn" title="上一曲">⏮</button>
             <button id="playPauseBtn" title="播放/暂停">▶</button>
             <button id="nextBtn" title="下一曲">⏭</button>
-            <button id="eqBtn" title="均衡器">🎛️</button>
         </div>
-        <audio id="audioPlayer" style="width:100%;"></audio>
+        <audio controls id="audioPlayer" style="width:100%;"></audio>
     </div>
 
     <div class="file-list-header">
@@ -580,7 +321,6 @@
         </div>
         <div id="fileList" class="file-grid" style="display:none;"></div>
         <div class="no-results" id="noResults">😕 没有找到匹配的歌曲</div>
-        <div id="errorMessage" class="error-msg"></div>
     </div>
 
     <div class="pagination" id="paginationControls">
@@ -590,51 +330,14 @@
     </div>
 </div>
 
-<div class="toast" id="toast"></div>
-
-<!-- ===== 均衡器弹窗 ===== -->
-<div class="eq-overlay" id="eqOverlay">
-    <div class="eq-panel">
-        <div class="eq-header">
-            <span class="eq-title">🎛️ 均衡器 <small>10 段</small></span>
-            <button class="eq-close" id="eqClose">✕</button>
-        </div>
-        
-        <div class="eq-presets" id="eqPresets">
-            <button class="eq-preset-btn active" data-preset="off">关闭</button>
-            <button class="eq-preset-btn" data-preset="flat">原声</button>
-            <button class="eq-preset-btn" data-preset="pop">流行</button>
-            <button class="eq-preset-btn" data-preset="rock">摇滚</button>
-            <button class="eq-preset-btn" data-preset="classical">古典</button>
-            <button class="eq-preset-btn" data-preset="jazz">爵士</button>
-            <button class="eq-preset-btn" data-preset="electronic">电子</button>
-            <button class="eq-preset-btn" data-preset="bass">增加低音</button>
-            <button class="eq-preset-btn" data-preset="treble">增加高音</button>
-            <button class="eq-preset-btn" data-preset="vocal">人声</button>
-            <button class="eq-preset-btn" data-preset="night">深夜</button>
-        </div>
-        
-        <div class="eq-sliders" id="eqSliders">
-            <!-- 由 JavaScript 动态生成 -->
-        </div>
-        
-        <div class="eq-footer">
-            <span class="eq-status" id="eqStatus">均衡器: <span class="highlight">关闭</span></span>
-            <span class="eq-status" id="eqPresetName"></span>
-        </div>
-    </div>
-</div>
-
 <script>
     (function() {
         "use strict";
 
-        // ============ 基础变量 ============
         const PAGE_SIZE = 10;
 
         const fileListEl = document.getElementById('fileList');
         const loadingEl = document.getElementById('loadingIndicator');
-        const errorMsgEl = document.getElementById('errorMessage');
         const totalBadge = document.getElementById('totalBadge');
         const audioPlayer = document.getElementById('audioPlayer');
         const currentTrackName = document.getElementById('currentTrackName');
@@ -643,7 +346,6 @@
         const nextBtn = document.getElementById('nextBtn');
         const playPauseBtn = document.getElementById('playPauseBtn');
         const modeBtn = document.getElementById('modeBtn');
-        const eqBtn = document.getElementById('eqBtn');
 
         const prevPageBtn = document.getElementById('prevPageBtn');
         const nextPageBtn = document.getElementById('nextPageBtn');
@@ -655,367 +357,16 @@
         const searchCount = document.getElementById('searchCount');
         const noResults = document.getElementById('noResults');
 
-        const toast = document.getElementById('toast');
-
-        // 均衡器 DOM
-        const eqOverlay = document.getElementById('eqOverlay');
-        const eqClose = document.getElementById('eqClose');
-        const eqPresets = document.getElementById('eqPresets');
-        const eqSliders = document.getElementById('eqSliders');
-        const eqStatus = document.getElementById('eqStatus');
-        const eqPresetName = document.getElementById('eqPresetName');
-
         let allFiles = [];
         let filteredFiles = [];
         let currentPage = 0;
         let totalPages = 0;
         let currentTrackIndex = -1;
         let isPlaying = false;
-        let toastTimer = null;
         let searchQuery = '';
         let playMode = 'sequential';
         
         const audioCache = new Map();
-
-        // ============ 均衡器核心 ============
-        const FREQS = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
-        let eqGains = new Array(10).fill(0);
-        let audioContext = null;
-        let audioSource = null;
-        let eqFilters = [];
-        let gainNode = null;
-        let isEQEnabled = false;
-        let currentPreset = 'off';
-
-        // 预设定义
-        const PRESETS = {
-            off: { name: '关闭', gains: [0,0,0,0,0,0,0,0,0,0] },
-            flat: { name: '原声', gains: [0,0,0,0,0,0,0,0,0,0] },
-            pop: { name: '流行', gains: [-1,0,1,2,3,2,1,0,-1,-2] },
-            rock: { name: '摇滚', gains: [4,5,3,1,0,0,1,3,4,4] },
-            classical: { name: '古典', gains: [2,3,3,2,1,0,0,1,2,3] },
-            jazz: { name: '爵士', gains: [2,3,3,2,1,1,1,2,3,3] },
-            electronic: { name: '电子', gains: [6,5,3,0,-1,0,1,3,4,5] },
-            bass: { name: '增加低音', gains: [8,6,4,2,0,0,0,0,0,0] },
-            treble: { name: '增加高音', gains: [0,0,0,0,0,1,3,5,6,7] },
-            vocal: { name: '人声', gains: [-2,-1,0,1,2,3,4,3,1,0] },
-            night: { name: '深夜', gains: [-3,-2,-1,0,1,2,2,1,0,-2] }
-        };
-
-        // 初始化均衡器滑块
-        function initEQSliders() {
-            eqSliders.innerHTML = '';
-            FREQS.forEach((freq, index) => {
-                const group = document.createElement('div');
-                group.className = 'eq-slider-group';
-                
-                const label = document.createElement('span');
-                label.className = 'eq-freq';
-                label.textContent = freq >= 1000 ? (freq/1000 + 'k') : freq;
-                
-                const input = document.createElement('input');
-                input.type = 'range';
-                input.className = 'eq-slider';
-                input.dataset.index = index;
-                input.min = -12;
-                input.max = 12;
-                input.value = 0;
-                input.step = 0.5;
-                
-                const value = document.createElement('span');
-                value.className = 'eq-value';
-                value.textContent = '0';
-                
-                input.addEventListener('input', function() {
-                    const idx = parseInt(this.dataset.index);
-                    const val = parseFloat(this.value);
-                    eqGains[idx] = val;
-                    value.textContent = val;
-                    value.classList.toggle('active', val !== 0);
-                    updateEQFilters();
-                    updatePresetHighlight();
-                    updateEQStatus();
-                });
-                
-                group.appendChild(label);
-                group.appendChild(input);
-                group.appendChild(value);
-                eqSliders.appendChild(group);
-            });
-        }
-
-        // 更新均衡器滤波器
-        function updateEQFilters() {
-            if (!isEQEnabled || eqFilters.length === 0) return;
-            eqFilters.forEach((filter, index) => {
-                if (filter) {
-                    filter.gain.value = eqGains[index] || 0;
-                }
-            });
-        }
-
-        // 更新均衡器状态显示
-        function updateEQStatus() {
-            const hasEffect = eqGains.some(g => g !== 0);
-            if (!hasEffect) {
-                eqStatus.innerHTML = '均衡器: <span class="highlight">关闭</span>';
-                eqPresetName.textContent = '';
-                eqBtn.classList.remove('eq-active');
-                return;
-            }
-            // 查找匹配的预设
-            let matched = false;
-            for (const [key, preset] of Object.entries(PRESETS)) {
-                if (key === 'off') continue;
-                if (eqGains.every((g, i) => g === preset.gains[i])) {
-                    eqStatus.innerHTML = `均衡器: <span class="highlight">${preset.name}</span>`;
-                    eqPresetName.textContent = `🎵 ${preset.name}`;
-                    matched = true;
-                    eqBtn.classList.add('eq-active');
-                    break;
-                }
-            }
-            if (!matched) {
-                eqStatus.innerHTML = '均衡器: <span class="highlight">自定义</span>';
-                eqPresetName.textContent = '🎛️ 自定义';
-                eqBtn.classList.add('eq-active');
-            }
-        }
-
-        // 更新预设高亮
-        function updatePresetHighlight() {
-            const buttons = eqPresets.querySelectorAll('.eq-preset-btn');
-            let matched = false;
-            for (const btn of buttons) {
-                const preset = btn.dataset.preset;
-                if (preset === 'off') {
-                    if (eqGains.every(g => g === 0)) {
-                        btn.classList.add('active');
-                        matched = true;
-                    } else {
-                        btn.classList.remove('active');
-                    }
-                    continue;
-                }
-                const presetGains = PRESETS[preset]?.gains;
-                if (presetGains && eqGains.every((g, i) => g === presetGains[i])) {
-                    btn.classList.add('active');
-                    matched = true;
-                } else {
-                    btn.classList.remove('active');
-                }
-            }
-            if (!matched) {
-                // 自定义，取消所有高亮
-                buttons.forEach(b => b.classList.remove('active'));
-            }
-        }
-
-        // 应用预设
-        function applyPreset(presetKey) {
-            if (presetKey === 'off') {
-                eqGains.fill(0);
-            } else {
-                const preset = PRESETS[presetKey];
-                if (!preset) return;
-                eqGains = [...preset.gains];
-            }
-            currentPreset = presetKey;
-            
-            // 更新滑块
-            const sliders = eqSliders.querySelectorAll('.eq-slider');
-            const values = eqSliders.querySelectorAll('.eq-value');
-            sliders.forEach((slider, index) => {
-                slider.value = eqGains[index] || 0;
-                values[index].textContent = eqGains[index] || 0;
-                values[index].classList.toggle('active', eqGains[index] !== 0);
-            });
-            
-            updateEQFilters();
-            updatePresetHighlight();
-            updateEQStatus();
-            
-            // 预设按钮高亮
-            eqPresets.querySelectorAll('.eq-preset-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.preset === presetKey);
-            });
-        }
-
-        // 构建均衡器节点
-        function buildEQ() {
-            const ctx = audioContext || initAudioContext();
-            if (!ctx) return null;
-            
-            // 清除旧节点
-            if (eqFilters.length > 0) {
-                eqFilters.forEach(f => { try { f.disconnect(); } catch(e) {} });
-                eqFilters = [];
-            }
-            if (gainNode) {
-                try { gainNode.disconnect(); } catch(e) {}
-                gainNode = null;
-            }
-            
-            // 创建 gain 节点
-            gainNode = ctx.createGain();
-            gainNode.gain.value = 1;
-            
-            // 创建滤波器链
-            const filters = [];
-            FREQS.forEach((freq, index) => {
-                const filter = ctx.createBiquadFilter();
-                filter.type = 'peaking';
-                filter.frequency.value = freq;
-                filter.Q.value = 1.0;
-                filter.gain.value = eqGains[index] || 0;
-                filters.push(filter);
-            });
-            
-            eqFilters = filters;
-            
-            // 连接：输入 → 滤波器1 → 滤波器2 → ... → gain → 输出
-            let prev = gainNode;
-            for (let i = filters.length - 1; i >= 0; i--) {
-                filters[i].connect(prev);
-                prev = filters[i];
-            }
-            
-            return prev; // 返回第一个滤波器（输入端点）
-        }
-
-        // 初始化 AudioContext
-        function initAudioContext() {
-            if (!audioContext) {
-                try {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                } catch(e) {
-                    console.error('Web Audio API 不支持');
-                    return null;
-                }
-            }
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-            return audioContext;
-        }
-
-        // 连接音频到均衡器
-        function connectAudioToEQ() {
-            const ctx = initAudioContext();
-            if (!ctx) {
-                isEQEnabled = false;
-                return;
-            }
-            
-            try {
-                // 如果已有连接，先断开
-                if (audioSource) {
-                    try { audioSource.disconnect(); } catch(e) {}
-                    audioSource = null;
-                }
-                
-                // 获取音频元素流
-                audioSource = ctx.createMediaElementSource(audioPlayer);
-                
-                // 构建均衡器
-                const eqInput = buildEQ();
-                if (!eqInput) {
-                    // 如果没有滤波器，直接连接
-                    audioSource.connect(ctx.destination);
-                    isEQEnabled = false;
-                    return;
-                }
-                
-                // 连接: audio → 均衡器 → 输出
-                audioSource.connect(eqInput);
-                gainNode.connect(ctx.destination);
-                
-                isEQEnabled = true;
-                console.log('✅ 均衡器已连接');
-            } catch(e) {
-                console.error('均衡器连接失败:', e);
-                isEQEnabled = false;
-                // 降级：直接连接
-                try {
-                    if (audioSource) {
-                        audioSource.disconnect();
-                        audioSource = null;
-                    }
-                    audioSource = ctx.createMediaElementSource(audioPlayer);
-                    audioSource.connect(ctx.destination);
-                } catch(err) {
-                    console.error('降级连接也失败:', err);
-                }
-            }
-        }
-
-        // 重新连接均衡器（在播放歌曲时调用）
-        function reconnectEQ() {
-            if (!audioContext || audioContext.state === 'closed') {
-                audioContext = null;
-                isEQEnabled = false;
-            }
-            if (audioPlayer.src) {
-                connectAudioToEQ();
-                updateEQFilters();
-            }
-        }
-
-        // 刷新均衡器（切换预设或手动调节后调用）
-        function refreshEQ() {
-            if (isEQEnabled && audioContext) {
-                // 重建均衡器节点
-                const ctx = audioContext;
-                if (audioSource) {
-                    try {
-                        // 断开旧连接
-                        audioSource.disconnect();
-                        // 重新连接
-                        const eqInput = buildEQ();
-                        if (eqInput) {
-                            audioSource.connect(eqInput);
-                            gainNode.connect(ctx.destination);
-                            isEQEnabled = true;
-                        } else {
-                            audioSource.connect(ctx.destination);
-                            isEQEnabled = false;
-                        }
-                    } catch(e) {
-                        console.error('刷新均衡器失败:', e);
-                        // 尝试重新连接
-                        connectAudioToEQ();
-                    }
-                } else {
-                    connectAudioToEQ();
-                }
-                updateEQFilters();
-            }
-        }
-
-        // 重置均衡器状态（切换歌曲时调用）
-        function resetEQ() {
-            // 不重置增益值，保持用户设置
-            // 只重新连接音频
-            if (audioPlayer.src) {
-                setTimeout(() => {
-                    reconnectEQ();
-                }, 100);
-            }
-        }
-
-        // ============ 基础功能 ============
-        function showToast(message, duration = 2000) {
-            if (toastTimer) {
-                clearTimeout(toastTimer);
-                toast.classList.remove('show');
-            }
-            toast.textContent = message;
-            toast.classList.add('show');
-            toastTimer = setTimeout(() => {
-                toast.classList.remove('show');
-                toastTimer = null;
-            }, duration);
-        }
 
         function getDisplayName(fullPath) {
             if (!fullPath) return '未知';
@@ -1091,45 +442,20 @@
         async function fetchFileList() {
             loadingEl.style.display = 'block';
             fileListEl.style.display = 'none';
-            errorMsgEl.style.display = 'none';
 
-            try {
-                const response = await fetch('/api/music?action=list&t=' + Date.now());
-                if (!response.ok) {
-                    const errText = await response.text();
-                    throw new Error(`服务器错误 (${response.status}): ${errText || response.statusText}`);
-                }
-                const data = await response.json();
-                if (!data.success) {
-                    throw new Error(data.message || '获取列表失败');
-                }
-                if (!Array.isArray(data.files)) {
-                    throw new Error('返回数据格式异常');
-                }
-                allFiles = data.files.filter(f => typeof f === 'string' && f.trim().length > 0);
-                allFiles.sort((a, b) => a.localeCompare(b));
+            const response = await fetch('/api/music?action=list&t=' + Date.now());
+            const data = await response.json();
+            allFiles = data.files.filter(f => typeof f === 'string' && f.trim().length > 0);
+            allFiles.sort((a, b) => a.localeCompare(b));
 
-                if (allFiles.length === 0) {
-                    throw new Error('R2 存储中暂无音乐文件');
-                }
+            totalBadge.textContent = allFiles.length + ' 首';
+            currentPage = 0;
+            totalPages = Math.ceil(allFiles.length / PAGE_SIZE);
+            renderPage(currentPage);
+            updatePaginationButtons();
 
-                totalBadge.textContent = allFiles.length + ' 首';
-                currentPage = 0;
-                totalPages = Math.ceil(allFiles.length / PAGE_SIZE);
-                renderPage(currentPage);
-                updatePaginationButtons();
-
-                loadingEl.style.display = 'none';
-                fileListEl.style.display = 'flex';
-
-            } catch (err) {
-                console.error('[fetchFileList]', err);
-                errorMsgEl.style.display = 'block';
-                errorMsgEl.textContent = '❌ ' + err.message;
-                loadingEl.style.display = 'none';
-                fileListEl.style.display = 'none';
-                totalBadge.textContent = '0 首';
-            }
+            loadingEl.style.display = 'none';
+            fileListEl.style.display = 'flex';
         }
 
         function renderPage(page) {
@@ -1196,22 +522,13 @@
 
         async function getPresignedUrl(filePath) {
             const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
-            if (!resp.ok) {
-                throw new Error(`获取播放链接失败 (${resp.status})`);
-            }
             const data = await resp.json();
-            if (!data.success || !data.url) {
-                throw new Error(data.message || '预签名链接无效');
-            }
             return data.url;
         }
 
         async function downloadAndCache(filePath) {
             const url = await getPresignedUrl(filePath);
             const audioResp = await fetch(url);
-            if (!audioResp.ok) {
-                throw new Error(`下载音频失败: ${audioResp.status}`);
-            }
             const audioData = await audioResp.arrayBuffer();
             const mimeType = getMimeType(filePath);
             const blob = new Blob([audioData], { type: mimeType });
@@ -1224,6 +541,7 @@
             if (audioCache.has(filePath)) {
                 return audioCache.get(filePath);
             }
+            
             if (isFirstPlay) {
                 return await getPresignedUrl(filePath);
             } else {
@@ -1231,8 +549,7 @@
             }
         }
 
-        // ============ 核心播放函数 ============
-        async function playTrack(index, btnElement, isRetry = false) {
+        async function playTrack(index, btnElement) {
             if (index < 0 || index >= allFiles.length) {
                 return;
             }
@@ -1268,151 +585,59 @@
                 }
             });
 
-            try {
-                const isFirstPlay = !audioCache.has(filePath);
-                const source = await getAudioSource(filePath, isFirstPlay);
+            const isFirstPlay = !audioCache.has(filePath);
+            const source = await getAudioSource(filePath, isFirstPlay);
+            
+            audioPlayer.src = source;
+            audioPlayer.load();
+            
+            await new Promise((resolve, reject) => {
+                let resolved = false;
+                const timeout = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        reject(new Error('加载超时'));
+                    }
+                }, 8000);
                 
-                audioPlayer.src = source;
-                audioPlayer.load();
-                
-                await new Promise((resolve, reject) => {
-                    let resolved = false;
-                    const timeout = setTimeout(() => {
-                        if (!resolved) {
-                            resolved = true;
-                            reject(new Error('加载超时'));
-                        }
-                    }, 8000);
-                    
-                    const onReady = () => {
-                        if (!resolved) {
-                            resolved = true;
-                            clearTimeout(timeout);
-                            audioPlayer.removeEventListener('canplay', onReady);
-                            audioPlayer.removeEventListener('loadeddata', onReady);
-                            resolve();
-                        }
-                    };
-                    
-                    if (audioPlayer.readyState >= 3) {
+                const onReady = () => {
+                    if (!resolved) {
                         resolved = true;
                         clearTimeout(timeout);
+                        audioPlayer.removeEventListener('canplay', onReady);
+                        audioPlayer.removeEventListener('loadeddata', onReady);
                         resolve();
-                        return;
                     }
-                    
-                    audioPlayer.addEventListener('canplay', onReady);
-                    audioPlayer.addEventListener('loadeddata', onReady);
-                });
+                };
                 
-                // ✅ 连接均衡器（如果已启用）
-                if (isEQEnabled || eqGains.some(g => g !== 0)) {
-                    // 确保 AudioContext 存在
-                    if (!audioContext) {
-                        initAudioContext();
-                    }
-                    // 重建均衡器连接（在播放前）
-                    setTimeout(() => {
-                        connectAudioToEQ();
-                        updateEQFilters();
-                    }, 50);
+                if (audioPlayer.readyState >= 3) {
+                    resolved = true;
+                    clearTimeout(timeout);
+                    resolve();
+                    return;
                 }
                 
-                await audioPlayer.play();
-                
-                currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-                updatePlayPauseButton(true);
-                isPlaying = true;
-                document.querySelectorAll('.play-btn').forEach(b => {
-                    const idx = parseInt(b.dataset.index);
-                    b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
-                    b.disabled = false;
-                    b.classList.toggle('playing', idx === index);
-                });
+                audioPlayer.addEventListener('canplay', onReady);
+                audioPlayer.addEventListener('loadeddata', onReady);
+            });
+            
+            await audioPlayer.play();
+            
+            currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
+            updatePlayPauseButton(true);
+            isPlaying = true;
+            document.querySelectorAll('.play-btn').forEach(b => {
+                const idx = parseInt(b.dataset.index);
+                b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
+                b.disabled = false;
+                b.classList.toggle('playing', idx === index);
+            });
 
-                if (isFirstPlay && !audioCache.has(filePath)) {
-                    downloadAndCache(filePath).catch(() => {});
-                }
-
-            } catch (err) {
-                console.error('❌ [playTrack]', err);
-                
-                if (!isRetry && !audioCache.has(filePath)) {
-                    try {
-                        const blobUrl = await downloadAndCache(filePath);
-                        audioPlayer.src = blobUrl;
-                        audioPlayer.load();
-                        
-                        await new Promise((resolve, reject) => {
-                            let resolved = false;
-                            const timeout = setTimeout(() => {
-                                if (!resolved) {
-                                    resolved = true;
-                                    reject(new Error('加载超时'));
-                                }
-                            }, 8000);
-                            
-                            const onReady = () => {
-                                if (!resolved) {
-                                    resolved = true;
-                                    clearTimeout(timeout);
-                                    audioPlayer.removeEventListener('canplay', onReady);
-                                    audioPlayer.removeEventListener('loadeddata', onReady);
-                                    resolve();
-                                }
-                            };
-                            
-                            if (audioPlayer.readyState >= 3) {
-                                resolved = true;
-                                clearTimeout(timeout);
-                                resolve();
-                                return;
-                            }
-                            
-                            audioPlayer.addEventListener('canplay', onReady);
-                            audioPlayer.addEventListener('loadeddata', onReady);
-                        });
-                        
-                        if (isEQEnabled || eqGains.some(g => g !== 0)) {
-                            if (!audioContext) {
-                                initAudioContext();
-                            }
-                            setTimeout(() => {
-                                connectAudioToEQ();
-                                updateEQFilters();
-                            }, 50);
-                        }
-                        
-                        await audioPlayer.play();
-                        
-                        currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-                        updatePlayPauseButton(true);
-                        isPlaying = true;
-                        document.querySelectorAll('.play-btn').forEach(b => {
-                            const idx = parseInt(b.dataset.index);
-                            b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
-                            b.disabled = false;
-                            b.classList.toggle('playing', idx === index);
-                        });
-                        return;
-                    } catch (retryErr) {
-                        console.error('❌ 重试也失败:', retryErr);
-                    }
-                }
-                
-                document.querySelectorAll('.play-btn').forEach(b => {
-                    const idx = parseInt(b.dataset.index);
-                    if (idx === index) {
-                        b.textContent = '▶ 播放';
-                        b.disabled = false;
-                        b.classList.remove('playing');
-                    }
-                });
-                showToast('加载失败，请重试', 1500);
+            if (isFirstPlay && !audioCache.has(filePath)) {
+                downloadAndCache(filePath).catch(() => {});
             }
         }
 
-        // ============ 播放控制 ============
         function togglePlayPause() {
             if (audioPlayer.paused) {
                 audioPlayer.play().catch(() => {});
@@ -1487,53 +712,17 @@
         function togglePlayMode() {
             const modes = ['sequential', 'random', 'repeat-one'];
             const icons = ['🔁', '🔀', '🔂'];
-            const labels = ['顺序播放', '随机播放', '单曲循环'];
             
             const currentIdx = modes.indexOf(playMode);
             const nextIdx = (currentIdx + 1) % modes.length;
             playMode = modes[nextIdx];
             
             modeBtn.textContent = icons[nextIdx];
-            modeBtn.title = labels[nextIdx];
             
             document.querySelectorAll('.player-controls button').forEach(b => b.classList.remove('mode-active'));
             modeBtn.classList.add('mode-active');
-            
-            showToast(labels[nextIdx], 1500);
         }
 
-        // ============ 均衡器事件绑定 ============
-        function setupEQEvents() {
-            // 打开均衡器
-            eqBtn.addEventListener('click', () => {
-                eqOverlay.classList.add('active');
-                updateEQStatus();
-                updatePresetHighlight();
-            });
-            
-            // 关闭均衡器
-            eqClose.addEventListener('click', () => {
-                eqOverlay.classList.remove('active');
-            });
-            
-            eqOverlay.addEventListener('click', (e) => {
-                if (e.target === eqOverlay) {
-                    eqOverlay.classList.remove('active');
-                }
-            });
-            
-            // 预设按钮点击
-            eqPresets.addEventListener('click', (e) => {
-                const btn = e.target.closest('.eq-preset-btn');
-                if (!btn) return;
-                const preset = btn.dataset.preset;
-                applyPreset(preset);
-                refreshEQ();
-                showToast(`均衡器: ${PRESETS[preset]?.name || preset}`, 1000);
-            });
-        }
-
-        // ============ 音频事件 ============
         function setupAudioEvents() {
             audioPlayer.addEventListener('ended', () => {
                 if (playMode === 'repeat-one') {
@@ -1565,23 +754,8 @@
                 updatePlayPauseButton(false);
                 isPlaying = false;
             });
-            
-            audioPlayer.addEventListener('error', (e) => {
-                console.error('❌ Audio error:', e);
-                if (currentTrackIndex >= 0) {
-                    const filePath = allFiles[currentTrackIndex];
-                    if (filePath && audioCache.has(filePath)) {
-                        try { URL.revokeObjectURL(audioCache.get(filePath)); } catch(ex) {}
-                        audioCache.delete(filePath);
-                        setTimeout(() => {
-                            playTrack(currentTrackIndex);
-                        }, 500);
-                    }
-                }
-            });
         }
 
-        // ============ 搜索事件 ============
         function setupSearchEvents() {
             searchInput.addEventListener('input', (e) => {
                 performSearch(e.target.value);
@@ -1594,7 +768,6 @@
             });
         }
 
-        // ============ 分页控制 ============
         function goToPage(page) {
             const fileList = getCurrentFileList();
             totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
@@ -1624,18 +797,12 @@
             });
         }
 
-        // ============ 初始化 ============
         async function init() {
-            // 初始化均衡器滑块
-            initEQSliders();
-            setupEQEvents();
-            
             initPaginationEvents();
             setupAudioEvents();
             setupSearchEvents();
             
             modeBtn.textContent = '🔁';
-            modeBtn.title = '顺序播放';
             modeBtn.classList.add('mode-active');
             
             await fetchFileList();
@@ -1645,9 +812,6 @@
                 currentTrackName.textContent = '🎵 ' + getDisplayName(allFiles[0]);
                 renderPage(currentPage);
             }
-
-            // 默认预设：关闭
-            applyPreset('off');
         }
 
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
