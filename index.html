@@ -410,36 +410,22 @@
         
         const audioCache = new Map();
 
-        // ✅ 关键：在用户点击时立即创建 AudioContext 并激活
+        // ✅ AudioContext 自动激活（用户点击播放按钮时自动触发）
         let audioContext = null;
-        let audioContextActivated = false;
 
-        function activateAudioContext() {
-            if (!audioContextActivated) {
+        function ensureAudioContext() {
+            if (!audioContext) {
                 try {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     if (audioContext.state === 'suspended') {
                         audioContext.resume();
                     }
-                    audioContextActivated = true;
-                    console.log('🔊 AudioContext 已激活');
                 } catch (e) {
-                    console.log('AudioContext 不可用，使用备用方案');
+                    // 某些浏览器不支持，静默忽略
                 }
             }
             return audioContext;
         }
-
-        // 点击页面任何地方激活 AudioContext
-        document.addEventListener('click', function onFirstClick() {
-            activateAudioContext();
-            document.removeEventListener('click', onFirstClick);
-        }, { once: true });
-
-        document.addEventListener('touchstart', function onFirstTouch() {
-            activateAudioContext();
-            document.removeEventListener('touchstart', onFirstTouch);
-        }, { once: true });
 
         function showToast(message, duration = 2000) {
             if (toastTimer) {
@@ -617,8 +603,6 @@
 
                 playBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    // ✅ 点击播放时激活 AudioContext
-                    activateAudioContext();
                     const index = parseInt(playBtn.dataset.index);
                     if (!isNaN(index) && index >= 0) {
                         await playTrack(index, playBtn);
@@ -661,7 +645,7 @@
             return blobUrl;
         }
 
-        // ✅ 核心修复：使用更可靠的播放方式
+        // ✅ 核心修复：播放时自动激活 AudioContext，然后等待音频加载完成再播放
         async function playTrack(index, btnElement) {
             if (index < 0 || index >= allFiles.length) {
                 return;
@@ -700,56 +684,50 @@
             });
 
             try {
+                // ✅ 自动激活 AudioContext（用户点击播放按钮时触发）
+                ensureAudioContext();
+                
                 // 获取音频数据
                 const blobUrl = await getAudioData(filePath);
                 
-                // ✅ 关键：先设置 src，但不立即 play
+                // 设置音频源
                 audioPlayer.src = blobUrl;
                 audioPlayer.load();
                 
-                // ✅ 关键：使用 canplay 事件确保音频准备好后再播放
-                const playWithCanPlay = () => {
-                    return new Promise((resolve, reject) => {
-                        // 如果已经准备好了，直接播放
-                        if (audioPlayer.readyState >= 3) {
-                            audioPlayer.play()
-                                .then(resolve)
-                                .catch(reject);
-                            return;
+                // ✅ 等待音频加载完成后再播放
+                await new Promise((resolve, reject) => {
+                    let resolved = false;
+                    const timeout = setTimeout(() => {
+                        if (!resolved) {
+                            resolved = true;
+                            reject(new Error('加载超时'));
                         }
-                        
-                        let resolved = false;
-                        const onCanPlay = () => {
-                            if (!resolved) {
-                                resolved = true;
-                                audioPlayer.removeEventListener('canplay', onCanPlay);
-                                audioPlayer.removeEventListener('loadeddata', onCanPlay);
-                                audioPlayer.play()
-                                    .then(resolve)
-                                    .catch(reject);
-                            }
-                        };
-                        
-                        audioPlayer.addEventListener('canplay', onCanPlay);
-                        audioPlayer.addEventListener('loadeddata', onCanPlay);
-                        
-                        // 超时保护
-                        setTimeout(() => {
-                            if (!resolved) {
-                                resolved = true;
-                                audioPlayer.removeEventListener('canplay', onCanPlay);
-                                audioPlayer.removeEventListener('loadeddata', onCanPlay);
-                                // 超时后强制播放
-                                audioPlayer.play()
-                                    .then(resolve)
-                                    .catch(reject);
-                            }
-                        }, 5000);
-                    });
-                };
+                    }, 8000);
+                    
+                    const onReady = () => {
+                        if (!resolved) {
+                            resolved = true;
+                            clearTimeout(timeout);
+                            audioPlayer.removeEventListener('canplay', onReady);
+                            audioPlayer.removeEventListener('loadeddata', onReady);
+                            resolve();
+                        }
+                    };
+                    
+                    // 如果已经准备好了，直接 resolve
+                    if (audioPlayer.readyState >= 3) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        resolve();
+                        return;
+                    }
+                    
+                    audioPlayer.addEventListener('canplay', onReady);
+                    audioPlayer.addEventListener('loadeddata', onReady);
+                });
                 
-                // 执行播放
-                await playWithCanPlay();
+                // ✅ 执行播放
+                await audioPlayer.play();
                 
                 // 播放成功
                 currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
@@ -761,7 +739,6 @@
                     b.disabled = false;
                     b.classList.toggle('playing', idx === index);
                 });
-                console.log('▶️ 播放成功:', filePath);
 
             } catch (err) {
                 console.error('❌ [playTrack]', err);
@@ -779,6 +756,7 @@
 
         function togglePlayPause() {
             if (audioPlayer.paused) {
+                ensureAudioContext();
                 audioPlayer.play().catch(() => {});
                 updatePlayPauseButton(true);
                 isPlaying = true;
