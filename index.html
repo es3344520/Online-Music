@@ -27,25 +27,16 @@
             box-shadow: 0 12px 40px rgba(0,0,0,0.08);
             padding: 24px 20px 32px;
         }
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #0b1e33;
-            margin-bottom: 16px;
-        }
         /* 搜索框 */
         .search-box {
             display: flex;
             gap: 10px;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             width: 100%;
         }
         .search-box input {
             flex: 1;
-            padding: 10px 16px;
+            padding: 12px 18px;
             border: 2px solid #e8edf5;
             border-radius: 30px;
             font-size: 0.95rem;
@@ -66,7 +57,7 @@
             background: #eef2f7;
             border: none;
             border-radius: 30px;
-            padding: 0 16px;
+            padding: 0 18px;
             font-size: 1.2rem;
             cursor: pointer;
             color: #5e6f8d;
@@ -83,59 +74,59 @@
         .search-results-info {
             font-size: 0.85rem;
             color: #5e6f8d;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             display: none;
         }
         .search-results-info.visible {
             display: block;
         }
+        /* 播放器 */
         .player-card {
             background: #f8faff;
             border-radius: 24px;
-            padding: 18px 16px 16px;
+            padding: 20px 16px 18px;
             margin-bottom: 28px;
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,20,50,0.04);
         }
         .now-playing {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 16px;
         }
         .track-name {
-            flex: 1;
             font-weight: 500;
             font-size: 1.1rem;
             color: #0b1e33;
-            white-space: nowrap;
+            text-align: center;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 200px;
+            white-space: nowrap;
+            max-width: 80%;
         }
         .player-controls {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            margin-top: 12px;
-            flex-wrap: wrap;
+            gap: 18px;
+            margin-bottom: 4px;
         }
         .player-controls button {
             background: none;
             border: none;
-            font-size: 1.4rem;
+            font-size: 1.6rem;
             cursor: pointer;
-            padding: 6px 10px;
-            border-radius: 30px;
+            padding: 8px 12px;
+            border-radius: 50%;
             transition: 0.15s;
             color: #1f2a44;
             background: #eef2f7;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 44px;
-            min-height: 44px;
+            width: 52px;
+            height: 52px;
         }
         .player-controls button:active {
             transform: scale(0.92);
@@ -144,8 +135,10 @@
         .player-controls button.primary {
             background: #3b82f6;
             color: white;
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            width: 60px;
+            height: 60px;
         }
         .player-controls button.primary:active {
             background: #2563eb;
@@ -155,18 +148,19 @@
             color: white;
         }
         .player-controls .mode-btn {
-            font-size: 1.0rem;
-            min-width: 40px;
-            min-height: 40px;
+            font-size: 1.2rem;
+            width: 48px;
+            height: 48px;
             background: #eef2f7;
         }
         audio {
             width: 100%;
-            margin-top: 12px;
+            margin-top: 14px;
             border-radius: 40px;
             outline: none;
             background: #eef2f7;
         }
+        /* 列表 */
         .file-list-header {
             display: flex;
             justify-content: space-between;
@@ -174,7 +168,7 @@
             margin: 18px 0 12px;
         }
         .file-list-header h2 {
-            font-size: 1.2rem;
+            font-size: 1.0rem;
             font-weight: 500;
             color: #1f2a44;
         }
@@ -316,13 +310,15 @@
             border-left: 4px solid #e54848;
             display: none;
         }
-        .footer-note {
-            margin-top: 28px;
-            font-size: 0.8rem;
-            color: #8892aa;
+        .no-results {
             text-align: center;
-            border-top: 1px solid #e9eef5;
-            padding-top: 20px;
+            padding: 30px 0;
+            color: #8892aa;
+            font-size: 0.95rem;
+            display: none;
+        }
+        .no-results.visible {
+            display: block;
         }
         .toast {
             position: fixed;
@@ -345,30 +341,32 @@
         .toast.show {
             opacity: 1;
         }
-        .no-results {
-            text-align: center;
-            padding: 30px 0;
-            color: #8892aa;
-            font-size: 0.95rem;
-            display: none;
-        }
-        .no-results.visible {
-            display: block;
-        }
         @media (max-width: 480px) {
             .container { padding: 16px; }
             .file-item { padding: 10px 12px; }
             .file-item .file-name { max-width: 50%; font-size: 0.9rem; }
-            .player-controls { gap: 6px; }
-            .player-controls button { font-size: 1.2rem; min-width: 38px; min-height: 38px; }
-            .search-box input { font-size: 0.9rem; padding: 8px 14px; }
+            .player-controls { gap: 12px; }
+            .player-controls button { 
+                font-size: 1.3rem; 
+                width: 44px; 
+                height: 44px; 
+            }
+            .player-controls button.primary {
+                width: 52px;
+                height: 52px;
+                font-size: 1.5rem;
+            }
+            .player-controls .mode-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1.0rem;
+            }
+            .search-box input { font-size: 0.9rem; padding: 10px 14px; }
         }
     </style>
 </head>
 <body>
 <div class="container" id="app">
-    <h1>📻 音乐库</h1>
-
     <!-- 搜索框 -->
     <div class="search-box">
         <input type="text" id="searchInput" placeholder="🔍 搜索歌曲..." autocomplete="off">
@@ -376,19 +374,17 @@
     </div>
     <div class="search-results-info" id="searchResultsInfo">找到 <span id="searchCount">0</span> 首歌曲</div>
 
-    <!-- 播放器卡片 -->
+    <!-- 播放器 -->
     <div class="player-card" id="playerCard">
         <div class="now-playing">
             <span class="track-name" id="currentTrackName">🎧 未选择</span>
-            <span style="font-size:0.8rem; color:#6b7f9f;" id="trackCounter">0 / 0</span>
         </div>
         
-        <!-- 播放控制按钮 -->
         <div class="player-controls">
+            <button id="modeBtn" class="mode-btn" title="播放模式">🔁</button>
             <button id="prevBtn" title="上一曲">⏮</button>
             <button id="playPauseBtn" class="primary" title="播放/暂停">▶</button>
             <button id="nextBtn" title="下一曲">⏭</button>
-            <button id="modeBtn" class="mode-btn" title="播放模式">🔁</button>
         </div>
         
         <audio controls id="audioPlayer" style="width:100%;"></audio>
@@ -396,7 +392,7 @@
 
     <!-- 文件列表 -->
     <div class="file-list-header">
-        <h2>🎵 所有歌曲</h2>
+        <span style="font-size:0.95rem; color:#1f2a44;">🎵 歌曲列表</span>
         <span class="badge" id="totalBadge">0 首</span>
     </div>
 
@@ -409,16 +405,13 @@
         <div id="errorMessage" class="error-msg"></div>
     </div>
 
-    <!-- 分页控件 -->
     <div class="pagination" id="paginationControls">
         <button id="prevPageBtn" disabled>◀ 上一页</button>
         <span class="page-indicator" id="pageIndicator">1 / 1</span>
         <button id="nextPageBtn" disabled>下一页 ▶</button>
     </div>
-    <div class="footer-note">🎵 享受音乐</div>
 </div>
 
-<!-- Toast 提示 -->
 <div class="toast" id="toast"></div>
 
 <script>
@@ -427,14 +420,12 @@
 
         const PAGE_SIZE = 10;
 
-        // DOM 元素
         const fileListEl = document.getElementById('fileList');
         const loadingEl = document.getElementById('loadingIndicator');
         const errorMsgEl = document.getElementById('errorMessage');
         const totalBadge = document.getElementById('totalBadge');
         const audioPlayer = document.getElementById('audioPlayer');
         const currentTrackName = document.getElementById('currentTrackName');
-        const trackCounter = document.getElementById('trackCounter');
 
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
@@ -453,7 +444,6 @@
 
         const toast = document.getElementById('toast');
 
-        // 状态
         let allFiles = [];
         let filteredFiles = [];
         let currentPage = 0;
@@ -463,14 +453,9 @@
         let globalAudioContext = null;
         let toastTimer = null;
         let searchQuery = '';
-        
-        // 播放模式
         let playMode = 'sequential';
-        
-        // 预签名链接缓存
         const presignedCache = new Map();
 
-        // ---------- Toast 提示 ----------
         function showToast(message, duration = 2000) {
             if (toastTimer) {
                 clearTimeout(toastTimer);
@@ -484,7 +469,6 @@
             }, duration);
         }
 
-        // ---------- AudioContext 初始化 ----------
         function initAudioContext() {
             if (!globalAudioContext) {
                 try {
@@ -506,7 +490,6 @@
             initAudioContext();
         }, { once: true });
 
-        // ---------- 辅助函数 ----------
         function showError(msg) {
             errorMsgEl.style.display = 'block';
             errorMsgEl.textContent = '❌ ' + msg;
@@ -546,7 +529,6 @@
             return searchQuery ? filteredFiles : allFiles;
         }
 
-        // ---------- 搜索功能 ----------
         function performSearch(query) {
             searchQuery = query.trim().toLowerCase();
             
@@ -570,15 +552,12 @@
                 }
             }
             
-            // 重置到第一页
             currentPage = 0;
             const fileList = getCurrentFileList();
-            totalPages = Math.ceil(fileList.length / PAGE_SIZE);
+            totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
             renderPage(currentPage);
             updatePaginationButtons();
-            updateTrackCounter();
             
-            // 更新总数显示
             if (searchQuery) {
                 totalBadge.textContent = filteredFiles.length + ' 首 (筛选)';
             } else {
@@ -586,7 +565,6 @@
             }
         }
 
-        // ---------- 获取文件列表 ----------
         async function fetchFileList() {
             loadingEl.style.display = 'block';
             fileListEl.style.display = 'none';
@@ -617,7 +595,6 @@
                 totalPages = Math.ceil(allFiles.length / PAGE_SIZE);
                 renderPage(currentPage);
                 updatePaginationButtons();
-                updateTrackCounter();
 
                 loadingEl.style.display = 'none';
                 fileListEl.style.display = 'flex';
@@ -631,7 +608,6 @@
             }
         }
 
-        // ---------- 渲染分页 ----------
         function renderPage(page) {
             const fileList = getCurrentFileList();
             const start = page * PAGE_SIZE;
@@ -657,7 +633,6 @@
                 nameSpan.className = 'file-name';
                 nameSpan.title = filePath;
                 
-                // 高亮搜索匹配
                 if (searchQuery) {
                     const lowerName = displayName.toLowerCase();
                     const index = lowerName.indexOf(searchQuery);
@@ -682,7 +657,9 @@
                 playBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     const index = parseInt(playBtn.dataset.index);
-                    await playTrack(index, playBtn);
+                    if (!isNaN(index) && index >= 0) {
+                        await playTrack(index, playBtn);
+                    }
                 });
 
                 item.appendChild(nameSpan);
@@ -693,24 +670,28 @@
             pageIndicator.textContent = `${page + 1} / ${totalPages || 1}`;
         }
 
-        // ---------- 播放指定歌曲 ----------
         async function playTrack(index, btnElement) {
-            if (index < 0 || index >= allFiles.length) return;
+            if (index < 0 || index >= allFiles.length) {
+                console.error('Invalid index:', index);
+                return;
+            }
             
             const filePath = allFiles[index];
+            if (!filePath) {
+                console.error('No file at index:', index);
+                return;
+            }
+            
             currentTrackIndex = index;
             
-            // 更新列表高亮
-            document.querySelectorAll('.file-item').forEach((el, i) => {
-                const fileList = getCurrentFileList();
-                const file = fileList[i];
-                if (file) {
-                    const globalIdx = allFiles.indexOf(file);
-                    el.classList.toggle('active', globalIdx === index);
+            document.querySelectorAll('.file-item').forEach((el) => {
+                const btn = el.querySelector('.play-btn');
+                if (btn) {
+                    const idx = parseInt(btn.dataset.index);
+                    el.classList.toggle('active', idx === index);
                 }
             });
             
-            // 更新按钮状态
             document.querySelectorAll('.play-btn').forEach(b => {
                 const idx = parseInt(b.dataset.index);
                 if (idx === index) {
@@ -758,7 +739,6 @@
                     playPromise
                         .then(() => {
                             currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-                            updateTrackCounter();
                             updatePlayPauseButton(true);
                             isPlaying = true;
                             
@@ -776,7 +756,6 @@
                                 audioPlayer.load();
                                 await audioPlayer.play();
                                 currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-                                updateTrackCounter();
                                 updatePlayPauseButton(true);
                                 isPlaying = true;
                                 document.querySelectorAll('.play-btn').forEach(b => {
@@ -791,6 +770,7 @@
                                     btnElement.textContent = '▶ 播放';
                                     btnElement.disabled = false;
                                 }
+                                showToast('加载失败，请重试', 1500);
                             }
                         });
                 }
@@ -809,7 +789,6 @@
             }
         }
 
-        // ---------- 播放控制 ----------
         function togglePlayPause() {
             if (audioPlayer.paused) {
                 audioPlayer.play();
@@ -840,18 +819,8 @@
             playPauseBtn.textContent = playing ? '⏸' : '▶';
         }
 
-        function updateTrackCounter() {
-            if (currentTrackIndex >= 0 && currentTrackIndex < allFiles.length) {
-                trackCounter.textContent = `${currentTrackIndex + 1} / ${allFiles.length}`;
-            } else {
-                trackCounter.textContent = `0 / ${allFiles.length}`;
-            }
-        }
-
-        // ---------- 切换歌曲 ----------
         function playPrevious() {
             if (allFiles.length === 0) return;
-            
             let newIndex;
             if (playMode === 'random') {
                 newIndex = getRandomTrack();
@@ -864,7 +833,6 @@
 
         function playNext() {
             if (allFiles.length === 0) return;
-            
             let newIndex;
             if (playMode === 'random') {
                 newIndex = getRandomTrack();
@@ -886,7 +854,6 @@
             return index;
         }
 
-        // ---------- 切换播放模式 ----------
         function togglePlayMode() {
             const modes = ['sequential', 'random', 'repeat-one'];
             const icons = ['🔁', '🔀', '🔂'];
@@ -903,7 +870,6 @@
             showToast(labels[nextIdx], 1500);
         }
 
-        // ---------- 音频事件监听 ----------
         function setupAudioEvents() {
             audioPlayer.addEventListener('ended', () => {
                 if (playMode === 'repeat-one') {
@@ -929,7 +895,6 @@
             });
         }
 
-        // ---------- 搜索事件 ----------
         function setupSearchEvents() {
             searchInput.addEventListener('input', (e) => {
                 performSearch(e.target.value);
@@ -942,10 +907,9 @@
             });
         }
 
-        // ---------- 分页控制 ----------
         function goToPage(page) {
             const fileList = getCurrentFileList();
-            totalPages = Math.ceil(fileList.length / PAGE_SIZE);
+            totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
             if (page < 0 || page >= totalPages) return;
             currentPage = page;
             renderPage(currentPage);
@@ -961,14 +925,13 @@
             pageIndicator.textContent = `${currentPage + 1} / ${totalPages || 1}`;
         }
 
-        // ---------- 初始化 ----------
         function initPaginationEvents() {
             prevPageBtn.addEventListener('click', () => {
                 if (currentPage > 0) goToPage(currentPage - 1);
             });
             nextPageBtn.addEventListener('click', () => {
                 const fileList = getCurrentFileList();
-                totalPages = Math.ceil(fileList.length / PAGE_SIZE);
+                totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
                 if (currentPage < totalPages - 1) goToPage(currentPage + 1);
             });
         }
@@ -987,7 +950,6 @@
             if (allFiles.length > 0) {
                 currentTrackIndex = 0;
                 currentTrackName.textContent = '🎵 ' + getDisplayName(allFiles[0]);
-                updateTrackCounter();
                 renderPage(currentPage);
             }
         }
