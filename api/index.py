@@ -2,7 +2,9 @@ import os
 import json
 import boto3
 from botocore.client import Config
+from urllib.parse import parse_qs, urlparse, unquote
 
+# ========== 配置 ==========
 ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID")
 ACCESS_KEY = os.environ.get("R2_ACCESS_KEY_ID")
 SECRET_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
@@ -20,6 +22,7 @@ s3 = boto3.client(
 )
 
 
+# ========== 工具函数 ==========
 def parse_filename(filename):
     name = filename.rsplit(".", 1)[0]
     if " - " in name:
@@ -32,9 +35,19 @@ def parse_filename(filename):
         return "Unknown", name.strip()
 
 
-def handler(request):
-    from urllib.parse import parse_qs, urlparse
+def response_json(status_code, data):
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        },
+        "body": json.dumps(data, ensure_ascii=False),
+    }
 
+
+# ========== 接口: /api/list ==========
+def handle_list(request):
     try:
         url = urlparse(request.get("path", ""))
         query = parse_qs(url.query)
@@ -49,9 +62,9 @@ def handler(request):
             if continuation_token:
                 params["ContinuationToken"] = continuation_token
 
-            response = s3.list_objects_v2(**params)
+            resp = s3.list_objects_v2(**params)
 
-            for obj in response.get("Contents", []):
+            for obj in resp.get("Contents", []):
                 key = obj["Key"]
                 ext = "." + key.split(".")[-1].lower()
                 if ext in AUDIO_EXTS:
@@ -64,9 +77,9 @@ def handler(request):
                         "modified": obj["LastModified"].isoformat(),
                     })
 
-            if not response.get("IsTruncated"):
+            if not resp.get("IsTruncated"):
                 break
-            continuation_token = response.get("NextContinuationToken")
+            continuation_token = resp.get("NextContinuationToken")
 
         all_objects.sort(key=lambda x: x["file"])
 
@@ -75,30 +88,54 @@ def handler(request):
         page = max(1, min(page, total_pages))
 
         start = (page - 1) * page_size
-        end = start + page_size
-        page_songs = all_objects[start:end]
+        page_songs = all_objects[start:start + page_size]
 
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            "body": json.dumps({
-                "page": page,
-                "total_pages": total_pages,
-                "total": total,
-                "page_size": page_size,
-                "songs": page_songs,
-            }, ensure_ascii=False),
-        }
+        return response_json(200, {
+            "page": page,
+            "total_pages": total_pages,
+            "total": total,
+            "page_size": page_size,
+            "songs": page_songs,
+        })
 
     except Exception as e:
-        return {
-            "statusCode": 500,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            "body": json.dumps({"error": str(e)}),
-        }
+        return response_json(500, {"error": str(e)})
+
+
+# ========== 接口: /api/play ==========
+def handle_play(request):
+    try:
+        url = urlparse(request.get("path", ""))
+        query = parse_qs(url.query)
+        file_key = query.get("file", [""])[0]
+        file_key = unquote(file_key)
+
+        if not file_key:
+            return response_json(400, {"error": "缺少 file 参数"})
+
+        presigned_url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": BUCKET, "Key": file_key},
+            ExpiresIn=7200,
+        )
+
+        return response_json(200, {
+            "url": presigned_url,
+            "file": file_key,
+            "expires_in": 7200,
+        })
+
+    except Exception as e:
+        return response_json(500, {"error": str(e)})
+
+
+# ========== Vercel 入口 ==========
+def handler(request):
+    path = request.get("path", "")
+
+    if path.startswith("/api/list"):
+        return handle_list(request)
+    elif path.startswith("/api/play"):
+        return handle_play(request)
+    else:
+        return response_json(404, {"error": "Not Found"})
