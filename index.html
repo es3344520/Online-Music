@@ -807,11 +807,10 @@
             
             await fetchFileList();
             
-            if (allFiles.length > 0) {
-                currentTrackIndex = 0;
-                currentTrackName.textContent = '🎵 ' + getDisplayName(allFiles[0]);
-                renderPage(currentPage);
-            }
+            // ✅ 完全移除默认选择，保持"未选择"状态
+            currentTrackIndex = -1;
+            currentTrackName.textContent = '🎧 未选择';
+            renderPage(currentPage);
         }
 
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
