@@ -206,8 +206,6 @@
             font-weight: 500;
             cursor: pointer;
             transition: 0.15s;
-            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
-            border: 1px solid rgba(255,255,255,0.1);
             min-width: 70px;
         }
         .file-item .play-btn:active {
@@ -216,7 +214,6 @@
         }
         .file-item .play-btn.playing {
             background: #1e293b;
-            box-shadow: none;
         }
         .file-item .play-btn:disabled {
             opacity: 0.6;
@@ -329,30 +326,25 @@
 </head>
 <body>
 <div class="container" id="app">
-    <!-- 搜索框 -->
     <div class="search-box">
         <input type="text" id="searchInput" placeholder="🔍 搜索歌曲..." autocomplete="off">
         <button class="clear-btn" id="clearSearchBtn" title="清除搜索">✕</button>
     </div>
     <div class="search-results-info" id="searchResultsInfo">找到 <span id="searchCount">0</span> 首歌曲</div>
 
-    <!-- 播放器 -->
     <div class="player-card" id="playerCard">
         <div class="now-playing">
             <span class="track-name" id="currentTrackName">🎧 未选择</span>
         </div>
-        
         <div class="player-controls">
             <button id="modeBtn" title="播放模式">🔁</button>
             <button id="prevBtn" title="上一曲">⏮</button>
             <button id="playPauseBtn" title="播放/暂停">▶</button>
             <button id="nextBtn" title="下一曲">⏭</button>
         </div>
-        
         <audio controls id="audioPlayer" style="width:100%;"></audio>
     </div>
 
-    <!-- 文件列表 -->
     <div class="file-list-header">
         <span>🎵 歌曲列表</span>
         <span class="badge" id="totalBadge">0 首</span>
@@ -434,24 +426,6 @@
             if (!fullPath) return '未知';
             const parts = fullPath.split('/');
             return parts[parts.length - 1] || fullPath;
-        }
-
-        function getFileExtension(filename) {
-            return filename.split('.').pop().toLowerCase();
-        }
-
-        function getMimeType(filename) {
-            const ext = getFileExtension(filename);
-            const mimeMap = {
-                'mp3': 'audio/mpeg',
-                'm4a': 'audio/mp4',
-                'aac': 'audio/aac',
-                'flac': 'audio/flac',
-                'wav': 'audio/wav',
-                'ogg': 'audio/ogg',
-                'opus': 'audio/opus'
-            };
-            return mimeMap[ext] || 'audio/mpeg';
         }
 
         function getCurrentFileList() {
@@ -600,7 +574,7 @@
             pageIndicator.textContent = `${page + 1} / ${totalPages || 1}`;
         }
 
-        // 核心播放函数 - 简化版，更稳定
+        // 简化播放函数 - 直接使用预签名链接
         async function playTrack(index, btnElement) {
             if (index < 0 || index >= allFiles.length) {
                 console.error('Invalid index:', index);
@@ -615,7 +589,7 @@
             
             currentTrackIndex = index;
             
-            // 更新 UI 状态
+            // 更新 UI
             document.querySelectorAll('.file-item').forEach((el) => {
                 const btn = el.querySelector('.play-btn');
                 if (btn) {
@@ -637,7 +611,7 @@
             });
 
             try {
-                // 获取预签名链接
+                // 获取预签名链接（缓存）
                 let presignedUrl = presignedCache.get(filePath);
                 if (!presignedUrl) {
                     const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
@@ -652,7 +626,7 @@
                     presignedCache.set(filePath, presignedUrl);
                 }
 
-                // 方法1: 直接使用预签名URL播放 (更稳定)
+                // 直接播放预签名链接
                 audioPlayer.src = presignedUrl;
                 audioPlayer.load();
                 
@@ -672,9 +646,12 @@
                             });
                         })
                         .catch((error) => {
-                            console.warn('Direct play failed, trying blob method:', error);
-                            // 方法2: 使用 fetch + Blob (备用)
-                            tryPlayWithBlob(presignedUrl, filePath, index, btnElement);
+                            console.warn('Play failed:', error);
+                            if (btnElement) {
+                                btnElement.textContent = '▶ 播放';
+                                btnElement.disabled = false;
+                            }
+                            // 不弹提示，用户可重试
                         });
                 }
 
@@ -689,56 +666,6 @@
                     }
                 });
                 showToast('加载失败，请重试', 1500);
-            }
-        }
-
-        // 备用播放方法：使用 Blob URL
-        async function tryPlayWithBlob(url, filePath, index, btnElement) {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`获取音频数据失败: ${response.status}`);
-                }
-                
-                const audioData = await response.arrayBuffer();
-                const mimeType = getMimeType(filePath);
-                const blob = new Blob([audioData], { type: mimeType });
-                const blobUrl = URL.createObjectURL(blob);
-                
-                audioPlayer.src = blobUrl;
-                audioPlayer.load();
-                
-                const playPromise = audioPlayer.play();
-                if (playPromise !== undefined) {
-                    playPromise
-                        .then(() => {
-                            currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-                            updatePlayPauseButton(true);
-                            isPlaying = true;
-                            
-                            document.querySelectorAll('.play-btn').forEach(b => {
-                                const idx = parseInt(b.dataset.index);
-                                b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
-                                b.disabled = false;
-                                b.classList.toggle('playing', idx === index);
-                            });
-                        })
-                        .catch((err) => {
-                            console.error('Blob play also failed:', err);
-                            if (btnElement) {
-                                btnElement.textContent = '▶ 播放';
-                                btnElement.disabled = false;
-                            }
-                            showToast('播放失败，请重试', 1500);
-                        });
-                }
-            } catch (err) {
-                console.error('Blob method error:', err);
-                if (btnElement) {
-                    btnElement.textContent = '▶ 播放';
-                    btnElement.disabled = false;
-                }
-                showToast('播放失败，请重试', 1500);
             }
         }
 
@@ -819,7 +746,6 @@
             modeBtn.textContent = icons[nextIdx];
             modeBtn.title = labels[nextIdx];
             
-            // 高亮当前模式
             document.querySelectorAll('.player-controls button').forEach(b => b.classList.remove('mode-active'));
             modeBtn.classList.add('mode-active');
             
@@ -848,11 +774,6 @@
             audioPlayer.addEventListener('pause', () => {
                 updatePlayPauseButton(false);
                 isPlaying = false;
-            });
-            
-            audioPlayer.addEventListener('error', (e) => {
-                console.error('Audio error:', e);
-                // 不要弹出错误，让用户重试
             });
         }
 
