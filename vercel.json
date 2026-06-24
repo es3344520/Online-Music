@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/list.py", "use": "@vercel/python" },
+    { "src": "api/play.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/api/list", "dest": "api/list.py" },
+    { "src": "/api/play", "dest": "api/play.py" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
