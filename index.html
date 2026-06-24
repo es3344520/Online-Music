@@ -329,7 +329,8 @@
             hideError();
 
             try {
-                const response = await fetch('/api/list?t=' + Date.now());
+                // ✅ 修改：使用合并后的 API /api/music?action=list
+                const response = await fetch('/api/music?action=list&t=' + Date.now());
                 if (!response.ok) {
                     const errText = await response.text();
                     throw new Error(`服务器错误 (${response.status}): ${errText || response.statusText}`);
@@ -428,8 +429,8 @@
                 // 检查缓存
                 let presignedUrl = presignedCache.get(filePath);
                 if (!presignedUrl) {
-                    // 请求预签名链接
-                    const resp = await fetch('/api/sign?file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
+                    // ✅ 修改：使用合并后的 API /api/music?action=sign
+                    const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
                     if (!resp.ok) {
                         const errMsg = await resp.text();
                         throw new Error(`获取播放链接失败 (${resp.status}): ${errMsg || resp.statusText}`);
