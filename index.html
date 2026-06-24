@@ -48,6 +48,16 @@
             border-radius: 0 12px 12px 0;
             line-height: 1.5;
         }
+        .ios-tip {
+            background: #fef3c7;
+            padding: 10px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            color: #92400e;
+            display: none;
+            border-left: 4px solid #f59e0b;
+        }
         .player-card {
             background: #f8faff;
             border-radius: 24px;
@@ -158,6 +168,10 @@
             background: #1e293b;
             box-shadow: none;
         }
+        .play-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
         .pagination {
             display: flex;
             justify-content: center;
@@ -243,6 +257,11 @@
     <h1>📻 音乐库</h1>
     <div class="sub">✦ 来自 R2 存储 · 每次加载 10 首</div>
 
+    <!-- iOS 提示 -->
+    <div class="ios-tip" id="iosTip">
+        💡 如果无法播放，请点击屏幕任意位置激活音频，然后重试
+    </div>
+
     <!-- 播放器卡片 -->
     <div class="player-card" id="playerCard">
         <div class="now-playing">
@@ -280,7 +299,7 @@
         "use strict";
 
         // ---------- 配置 ----------
-        const PAGE_SIZE = 10;            // 每页显示歌曲数
+        const PAGE_SIZE = 10;
 
         // DOM 元素
         const fileListEl = document.getElementById('fileList');
@@ -289,19 +308,53 @@
         const totalBadge = document.getElementById('totalBadge');
         const audioPlayer = document.getElementById('audioPlayer');
         const currentTrackName = document.getElementById('currentTrackName');
+        const iosTip = document.getElementById('iosTip');
 
         const prevBtn = document.getElementById('prevPageBtn');
         const nextBtn = document.getElementById('nextPageBtn');
         const pageIndicator = document.getElementById('pageIndicator');
 
         // 状态
-        let allFiles = [];                // 所有文件名 (字符串)
-        let currentPage = 0;              // 0-based
+        let allFiles = [];
+        let currentPage = 0;
         let totalPages = 0;
         let isPlaying = false;
+        let globalAudioContext = null;
 
-        // 预签名链接缓存 (避免重复请求)
+        // 预签名链接缓存
         const presignedCache = new Map();
+
+        // ---------- 检测移动端 Safari ----------
+        const isMobileSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && /WebKit/.test(navigator.userAgent);
+        if (isMobileSafari) {
+            iosTip.style.display = 'block';
+        }
+
+        // ---------- 初始化 AudioContext (用户手势) ----------
+        function initAudioContext() {
+            if (!globalAudioContext) {
+                try {
+                    globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    if (globalAudioContext.state === 'suspended') {
+                        globalAudioContext.resume();
+                    }
+                    console.log('AudioContext initialized');
+                } catch (e) {
+                    console.log('AudioContext init error:', e);
+                }
+            }
+            return globalAudioContext;
+        }
+
+        // 点击页面任意位置激活音频
+        document.addEventListener('click', function initAudioOnClick() {
+            initAudioContext();
+        }, { once: true });
+
+        // 触摸设备支持
+        document.addEventListener('touchstart', function initAudioOnTouch() {
+            initAudioContext();
+        }, { once: true });
 
         // ---------- 辅助函数 ----------
         function showError(msg) {
@@ -315,21 +368,19 @@
             errorMsgEl.style.display = 'none';
         }
 
-        // 格式化文件名 (去除路径, 只显示文件名)
         function getDisplayName(fullPath) {
             if (!fullPath) return '未知';
             const parts = fullPath.split('/');
             return parts[parts.length - 1] || fullPath;
         }
 
-        // ---------- 获取文件列表 (通过 Vercel API) ----------
+        // ---------- 获取文件列表 ----------
         async function fetchFileList() {
             loadingEl.style.display = 'block';
             fileListEl.style.display = 'none';
             hideError();
 
             try {
-                // ✅ 修改：使用合并后的 API /api/music?action=list
                 const response = await fetch('/api/music?action=list&t=' + Date.now());
                 if (!response.ok) {
                     const errText = await response.text();
@@ -339,21 +390,17 @@
                 if (!data.success) {
                     throw new Error(data.message || '获取列表失败');
                 }
-                // 预期 data.files 为字符串数组 (文件名)
                 if (!Array.isArray(data.files)) {
                     throw new Error('返回数据格式异常');
                 }
                 allFiles = data.files.filter(f => typeof f === 'string' && f.trim().length > 0);
-                // 按字母排序 (可选)
                 allFiles.sort((a, b) => a.localeCompare(b));
 
                 if (allFiles.length === 0) {
                     throw new Error('R2 存储中暂无音乐文件');
                 }
 
-                // 更新总数量
                 totalBadge.textContent = allFiles.length + ' 首';
-                // 重置分页
                 currentPage = 0;
                 totalPages = Math.ceil(allFiles.length / PAGE_SIZE);
                 renderPage(currentPage);
@@ -390,7 +437,7 @@
 
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'file-name';
-                nameSpan.title = filePath;   // 完整路径悬停显示
+                nameSpan.title = filePath;
                 nameSpan.textContent = displayName;
 
                 const playBtn = document.createElement('button');
@@ -398,9 +445,10 @@
                 playBtn.dataset.file = filePath;
                 playBtn.textContent = '▶ 播放';
 
-                // 点击播放
                 playBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
+                    // 点击播放按钮时确保 AudioContext 已激活
+                    initAudioContext();
                     const file = playBtn.dataset.file;
                     await playFile(file, playBtn);
                 });
@@ -410,26 +458,73 @@
                 fileListEl.appendChild(item);
             }
 
-            // 更新页码指示
             pageIndicator.textContent = `${page + 1} / ${totalPages || 1}`;
         }
 
-        // ---------- 播放指定文件 (通过预签名) ----------
+        // ---------- 备用播放方案 ----------
+        function handlePlaybackFallback(url, filePath, btnElement) {
+            try {
+                const audio = new Audio(url);
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
+                            if (btnElement) {
+                                btnElement.textContent = '▶ 播放中';
+                                btnElement.classList.add('playing');
+                                btnElement.disabled = false;
+                            }
+                            // 同步到主播放器
+                            audioPlayer.src = url;
+                            audioPlayer.load();
+                            isPlaying = true;
+                            
+                            // 更新所有按钮状态
+                            document.querySelectorAll('.play-btn').forEach(b => {
+                                if (b !== btnElement) {
+                                    b.textContent = '▶ 播放';
+                                    b.classList.remove('playing');
+                                    b.disabled = false;
+                                }
+                            });
+                        })
+                        .catch(err => {
+                            console.error('Fallback play error:', err);
+                            alert('播放失败，请尝试刷新页面或点击页面空白处后重试');
+                            if (btnElement) {
+                                btnElement.textContent = '▶ 播放';
+                                btnElement.disabled = false;
+                                btnElement.classList.remove('playing');
+                            }
+                        });
+                }
+            } catch (e) {
+                console.error('Fallback error:', e);
+                if (btnElement) {
+                    btnElement.textContent = '▶ 播放';
+                    btnElement.disabled = false;
+                }
+            }
+        }
+
+        // ---------- 播放指定文件 ----------
         async function playFile(filePath, btnElement) {
             if (!filePath) return;
 
-            // 显示加载状态 (按钮文字变化)
-            const originalText = btnElement ? btnElement.textContent : '▶ 播放';
+            // 显示加载状态
             if (btnElement) {
                 btnElement.textContent = '⏳ 加载中';
                 btnElement.disabled = true;
             }
 
             try {
+                // 确保 AudioContext 已激活
+                const audioCtx = initAudioContext();
+                
                 // 检查缓存
                 let presignedUrl = presignedCache.get(filePath);
                 if (!presignedUrl) {
-                    // ✅ 修改：使用合并后的 API /api/music?action=sign
                     const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
                     if (!resp.ok) {
                         const errMsg = await resp.text();
@@ -443,35 +538,48 @@
                     presignedCache.set(filePath, presignedUrl);
                 }
 
-                // 设置 audio 并播放
+                // 设置音频源
                 audioPlayer.src = presignedUrl;
                 audioPlayer.load();
-                await audioPlayer.play();
-
-                // 更新 UI
-                currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-                // 重置所有按钮状态
-                document.querySelectorAll('.play-btn').forEach(b => {
-                    b.textContent = '▶ 播放';
-                    b.disabled = false;
-                    b.classList.remove('playing');
-                });
-                if (btnElement) {
-                    btnElement.textContent = '▶ 播放中';
-                    btnElement.classList.add('playing');
+                
+                // 尝试播放
+                const playPromise = audioPlayer.play();
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            // 播放成功
+                            currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
+                            document.querySelectorAll('.play-btn').forEach(b => {
+                                b.textContent = '▶ 播放';
+                                b.disabled = false;
+                                b.classList.remove('playing');
+                            });
+                            if (btnElement) {
+                                btnElement.textContent = '▶ 播放中';
+                                btnElement.classList.add('playing');
+                            }
+                            isPlaying = true;
+                            
+                            // 关闭 AudioContext (可选)
+                            if (audioCtx && audioCtx.state !== 'closed') {
+                                audioCtx.close().catch(() => {});
+                            }
+                        })
+                        .catch(error => {
+                            console.warn('Primary play failed, using fallback:', error);
+                            // 使用备用方案
+                            handlePlaybackFallback(presignedUrl, filePath, btnElement);
+                        });
                 }
-                isPlaying = true;
 
             } catch (err) {
                 console.error('[playFile]', err);
                 alert('播放失败: ' + (err.message || '未知错误'));
-                // 恢复按钮
                 if (btnElement) {
                     btnElement.textContent = '▶ 播放';
                     btnElement.disabled = false;
                     btnElement.classList.remove('playing');
                 }
-                // 若播放出错，重置播放器显示
                 if (audioPlayer.src) {
                     audioPlayer.pause();
                     audioPlayer.src = '';
@@ -486,7 +594,6 @@
             currentPage = page;
             renderPage(currentPage);
             updatePaginationButtons();
-            // 滚动到列表顶部 (移动端友好)
             document.getElementById('fileListContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
@@ -496,7 +603,7 @@
             pageIndicator.textContent = `${currentPage + 1} / ${totalPages || 1}`;
         }
 
-        // ---------- 初始化事件绑定 ----------
+        // ---------- 初始化 ----------
         function initPaginationEvents() {
             prevBtn.addEventListener('click', () => {
                 if (currentPage > 0) goToPage(currentPage - 1);
@@ -506,25 +613,24 @@
             });
         }
 
-        // ---------- 启动 ----------
         async function init() {
             initPaginationEvents();
-            // 加载列表
             await fetchFileList();
-            // 如果只有一页，禁用分页按钮更优雅
+            
             if (totalPages <= 1) {
                 prevBtn.disabled = true;
                 nextBtn.disabled = true;
             }
-            // 音频播放结束重置按钮状态
+
             audioPlayer.addEventListener('ended', () => {
                 document.querySelectorAll('.play-btn').forEach(b => {
                     b.textContent = '▶ 播放';
                     b.classList.remove('playing');
+                    b.disabled = false;
                 });
                 currentTrackName.textContent = '🎧 已结束';
             });
-            // 错误处理: 如果音频加载失败
+
             audioPlayer.addEventListener('error', () => {
                 document.querySelectorAll('.play-btn').forEach(b => {
                     b.textContent = '▶ 播放';
@@ -535,7 +641,6 @@
             });
         }
 
-        // 页面完全加载后初始化
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
             init();
         } else {
