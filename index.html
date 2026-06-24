@@ -408,9 +408,8 @@
         let searchQuery = '';
         let playMode = 'sequential';
         
-        // 缓存音乐文件数据 (Blob URL)
-        const audioCache = new Map(); // key: filePath, value: { blobUrl, timestamp }
-        const CACHE_DURATION = 30 * 60 * 1000; // 30分钟缓存有效期
+        // 缓存音乐文件数据 (Blob URL) - 永久缓存
+        const audioCache = new Map(); // key: filePath, value: blobUrl
 
         function showToast(message, duration = 2000) {
             if (toastTimer) {
@@ -449,13 +448,10 @@
             return mimeMap[ext] || 'audio/mpeg';
         }
 
-        // 清除缓存（切换歌曲时调用）
+        // 清除所有缓存
         function clearAudioCache() {
-            // 释放所有 Blob URL
-            for (const [key, value] of audioCache) {
-                if (value.blobUrl) {
-                    URL.revokeObjectURL(value.blobUrl);
-                }
+            for (const [key, blobUrl] of audioCache) {
+                URL.revokeObjectURL(blobUrl);
             }
             audioCache.clear();
             console.log('音频缓存已清除');
@@ -463,9 +459,9 @@
 
         // 清除单首歌曲缓存
         function clearSingleCache(filePath) {
-            const cached = audioCache.get(filePath);
-            if (cached && cached.blobUrl) {
-                URL.revokeObjectURL(cached.blobUrl);
+            if (audioCache.has(filePath)) {
+                const blobUrl = audioCache.get(filePath);
+                URL.revokeObjectURL(blobUrl);
                 audioCache.delete(filePath);
                 console.log('已清除缓存:', filePath);
             }
@@ -617,24 +613,15 @@
             pageIndicator.textContent = `${page + 1} / ${totalPages || 1}`;
         }
 
-        // 获取音频数据（带缓存）
+        // 获取音频数据（带永久缓存）
         async function getAudioData(filePath) {
             // 检查缓存
-            const cached = audioCache.get(filePath);
-            if (cached) {
-                // 检查是否过期
-                if (Date.now() - cached.timestamp < CACHE_DURATION) {
-                    console.log('使用缓存:', filePath);
-                    return cached.blobUrl;
-                } else {
-                    // 缓存过期，清除
-                    URL.revokeObjectURL(cached.blobUrl);
-                    audioCache.delete(filePath);
-                    console.log('缓存已过期:', filePath);
-                }
+            if (audioCache.has(filePath)) {
+                console.log('使用缓存:', filePath);
+                return audioCache.get(filePath);
             }
 
-            console.log('获取新数据:', filePath);
+            console.log('下载新数据:', filePath);
             
             // 获取预签名链接
             const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
@@ -657,11 +644,9 @@
             const blob = new Blob([audioData], { type: mimeType });
             const blobUrl = URL.createObjectURL(blob);
 
-            // 存入缓存
-            audioCache.set(filePath, {
-                blobUrl: blobUrl,
-                timestamp: Date.now()
-            });
+            // 存入缓存（永久）
+            audioCache.set(filePath, blobUrl);
+            console.log('已缓存:', filePath);
 
             return blobUrl;
         }
@@ -679,9 +664,8 @@
                 return;
             }
             
-            // 如果切换歌曲，清除之前的缓存（但保留当前歌曲的缓存用于单曲循环）
+            // 如果切换歌曲，清除之前的缓存
             if (currentTrackIndex !== -1 && currentTrackIndex !== index) {
-                // 切换歌曲时清除所有缓存
                 clearAudioCache();
             }
             
@@ -864,7 +848,7 @@
         function setupAudioEvents() {
             audioPlayer.addEventListener('ended', () => {
                 if (playMode === 'repeat-one') {
-                    // 单曲循环：使用缓存的 Blob URL 重新播放
+                    // 单曲循环：从头播放，使用缓存的 Blob URL
                     audioPlayer.currentTime = 0;
                     audioPlayer.play().catch(() => {});
                 } else {
@@ -890,11 +874,10 @@
             // 播放错误时尝试重新加载
             audioPlayer.addEventListener('error', (e) => {
                 console.error('Audio error:', e);
-                // 如果当前歌曲有缓存，尝试重新播放
+                // 如果当前歌曲有缓存，清除并重新加载
                 if (currentTrackIndex >= 0) {
                     const filePath = allFiles[currentTrackIndex];
                     if (filePath && audioCache.has(filePath)) {
-                        // 缓存可能已损坏，清除并重新加载
                         clearSingleCache(filePath);
                         playTrack(currentTrackIndex);
                     }
