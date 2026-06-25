@@ -67,7 +67,7 @@ module.exports = async (req, res) => {
       });
 
       let signedUrl = await getSignedUrl(s3Client, command, {
-        expiresIn: 1800,
+        expiresIn: 600,
       });
 
       if (R2_CUSTOM_DOMAIN) {
