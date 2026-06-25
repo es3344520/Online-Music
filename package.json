@@ -2,7 +2,7 @@
   "name": "vercel-r2-signer",
   "version": "1.0.0",
   "description": "R2 signer for Vercel",
-  "main": "api/sign.js",
+  "main": "api/music.js",
   "dependencies": {
     "aws4fetch": "^1.0.17"
   }
