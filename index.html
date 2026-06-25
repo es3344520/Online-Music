@@ -562,6 +562,41 @@
             }
         }
 
+        // ===== iOS 后台播放支持 =====
+        async function enableBackgroundAudio() {
+            try {
+                // 1. 创建 AudioContext 激活音频会话
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    const audioCtx = new AudioContext();
+                    if (audioCtx.state === 'suspended') {
+                        await audioCtx.resume();
+                    }
+                    
+                    // 2. 创建一个极短的静音音频，保持会话活跃
+                    // 这会让 iOS 认为有音频正在播放，从而允许后台播放
+                    const oscillator = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    gain.gain.value = 0.001; // 几乎听不到
+                    oscillator.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    oscillator.start(0);
+                    oscillator.stop(0.05); // 只响 50ms
+                    
+                    // 3. 声明后台播放（如果支持）
+                    if (navigator.audioSession) {
+                        navigator.audioSession.type = 'playback';
+                    }
+                }
+                
+                console.log('✅ iOS 后台音频已激活');
+                return true;
+            } catch (e) {
+                console.log('⚠️ 后台音频激活失败（不影响播放）:', e);
+                return false;
+            }
+        }
+
         async function playTrack(index, btnElement) {
             if (index < 0 || index >= allFiles.length) {
                 return;
@@ -632,6 +667,19 @@
                 audioPlayer.addEventListener('canplay', onReady);
                 audioPlayer.addEventListener('loadeddata', onReady);
             });
+            
+            // ===== 播放前确保音频上下文激活（iOS 后台播放） =====
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    const ctx = new AudioContext();
+                    if (ctx.state === 'suspended') {
+                        await ctx.resume();
+                    }
+                }
+            } catch (e) {
+                // 忽略
+            }
             
             await audioPlayer.play();
             
@@ -821,6 +869,9 @@
         }
 
         async function init() {
+            // ===== 🔥 关键：激活 iOS 后台播放 =====
+            await enableBackgroundAudio();
+            
             initPaginationEvents();
             setupAudioEvents();
             setupSearchEvents();
