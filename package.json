@@ -1,10 +1,9 @@
 {
-  "name": "r2-music-player",
+  "name": "vercel-r2-signer",
   "version": "1.0.0",
-  "description": "R2音乐播放器",
-  "main": "index.js",
+  "description": "R2 signer for Vercel",
+  "main": "api/sign.js",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3",
-    "@aws-sdk/s3-request-presigner": "^3"
+    "aws4fetch": "^1.0.17"
   }
 }
