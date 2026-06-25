@@ -2,9 +2,11 @@ const { S3Client, ListObjectsV2Command, GetObjectCommand } = require('@aws-sdk/c
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 module.exports = async (req, res) => {
+  // 设置 CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   
+  // 处理 OPTIONS 预检请求
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -15,13 +17,20 @@ module.exports = async (req, res) => {
       R2_ACCESS_KEY_ID,
       R2_SECRET_ACCESS_KEY,
       R2_BUCKET_NAME,
-      R2_CUSTOM_DOMAIN
+      R2_CUSTOM_DOMAIN: rawCustomDomain
     } = process.env;
 
+    const R2_CUSTOM_DOMAIN = rawCustomDomain ? rawCustomDomain.trim() : undefined;
+
+    // 验证环境变量
     if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
-      return res.status(500).json({ success: false, message: '服务器配置错误' });
+      return res.status(500).json({
+        success: false,
+        message: '服务器配置错误'
+      });
     }
 
+    // 初始化 S3 客户端
     const s3Client = new S3Client({
       region: 'auto',
       endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -33,38 +42,65 @@ module.exports = async (req, res) => {
 
     const { action, file } = req.query;
 
+    // 获取文件列表
     if (!action || action === 'list') {
-      const command = new ListObjectsV2Command({ Bucket: R2_BUCKET_NAME });
+      const command = new ListObjectsV2Command({
+        Bucket: R2_BUCKET_NAME,
+      });
+
       const response = await s3Client.send(command);
+      
       const files = response.Contents
         ?.filter(item => !item.Key.endsWith('/'))
         .map(item => item.Key) || [];
-      return res.status(200).json({ success: true, files: files });
+
+      return res.status(200).json({
+        success: true,
+        files: files
+      });
     }
 
+    // 生成预签名播放链接
     if (action === 'sign') {
       if (!file) {
-        return res.status(400).json({ success: false, message: '缺少 file 参数' });
+        return res.status(400).json({
+          success: false,
+          message: '缺少 file 参数'
+        });
       }
 
-      const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: file });
-      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 1800 });
+      const command = new GetObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: file,
+      });
 
+      const signedUrl = await getSignedUrl(s3Client, command, {
+        expiresIn: 1800,
+      }); 
+      
       let finalUrl = signedUrl;
       if (R2_CUSTOM_DOMAIN) {
-        // 使用 URL 对象解析，精确替换 hostname
         const url = new URL(signedUrl);
         url.hostname = R2_CUSTOM_DOMAIN;
         finalUrl = url.toString();
       }
 
-      return res.status(200).json({ success: true, url: finalUrl });
+      return res.status(200).json({
+        success: true,
+        url: finalUrl
+      });
     }
 
-    return res.status(400).json({ success: false, message: '无效的 action 参数' });
+    return res.status(400).json({
+      success: false,
+      message: '无效的 action 参数'
+    });
 
   } catch (error) {
     console.error('API error:', error);
-    res.status(500).json({ success: false, message: '服务器错误' });
+    res.status(500).json({
+      success: false,
+      message: '服务器错误'
+    });
   }
 };
