@@ -2,11 +2,9 @@ const { S3Client, ListObjectsV2Command, GetObjectCommand } = require('@aws-sdk/c
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 module.exports = async (req, res) => {
-  // 设置 CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   
-  // 处理 OPTIONS 预检请求
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -16,10 +14,10 @@ module.exports = async (req, res) => {
       R2_ACCOUNT_ID,
       R2_ACCESS_KEY_ID,
       R2_SECRET_ACCESS_KEY,
-      R2_BUCKET_NAME
+      R2_BUCKET_NAME,
+      R2_CUSTOM_DOMAIN
     } = process.env;
 
-    // 验证环境变量
     if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
       return res.status(500).json({
         success: false,
@@ -27,7 +25,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 初始化 S3 客户端
     const s3Client = new S3Client({
       region: 'auto',
       endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -39,7 +36,6 @@ module.exports = async (req, res) => {
 
     const { action, file } = req.query;
 
-    // 获取文件列表
     if (!action || action === 'list') {
       const command = new ListObjectsV2Command({
         Bucket: R2_BUCKET_NAME,
@@ -57,7 +53,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 生成预签名播放链接
     if (action === 'sign') {
       if (!file) {
         return res.status(400).json({
@@ -71,9 +66,15 @@ module.exports = async (req, res) => {
         Key: file,
       });
 
-      const signedUrl = await getSignedUrl(s3Client, command, {
+      let signedUrl = await getSignedUrl(s3Client, command, {
         expiresIn: 1800,
       });
+
+      if (R2_CUSTOM_DOMAIN) {
+        const originalDomain = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}`;
+        const customDomain = R2_CUSTOM_DOMAIN.replace(/^https?:\/\//, '');
+        signedUrl = signedUrl.replace(originalDomain, customDomain);
+      }
 
       return res.status(200).json({
         success: true,
