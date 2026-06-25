@@ -52,10 +52,10 @@ module.exports = async (req, res) => {
 
       let finalUrl = signedUrl;
       if (R2_CUSTOM_DOMAIN) {
-        finalUrl = signedUrl.replace(
-          `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}`,
-          R2_CUSTOM_DOMAIN
-        );
+        // 使用 URL 对象解析，精确替换 hostname
+        const url = new URL(signedUrl);
+        url.hostname = R2_CUSTOM_DOMAIN;
+        finalUrl = url.toString();
       }
 
       return res.status(200).json({ success: true, url: finalUrl });
