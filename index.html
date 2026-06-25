@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>🎵 R2 音乐播放器</title>
+    
+    <!-- jPlayer 依赖 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jplayer/2.9.2/skin/blue.monday/jplayer.blue.monday.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jplayer/2.9.2/jplayer.min.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -79,6 +85,8 @@
         .search-results-info.visible {
             display: block;
         }
+        
+        /* jPlayer 播放器样式覆盖 */
         .player-card {
             background: #f8faff;
             border-radius: 24px;
@@ -90,7 +98,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
         .track-name {
             font-weight: 500;
@@ -102,14 +110,24 @@
             white-space: nowrap;
             max-width: 80%;
         }
-        .player-controls {
+        
+        /* 覆盖 jPlayer 默认样式以匹配设计 */
+        .jp-audio {
+            margin: 0 auto;
+            max-width: 100%;
+        }
+        .jp-audio .jp-type-single .jp-interface {
+            background: transparent;
+            padding: 0;
+        }
+        .jp-audio .jp-controls {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            margin-bottom: 4px;
+            gap: 8px;
+            padding: 8px 0;
         }
-        .player-controls button {
+        .jp-audio .jp-controls button {
             background: none;
             border: none;
             font-size: 1.5rem;
@@ -123,21 +141,62 @@
             justify-content: center;
             border-radius: 50%;
             transition: 0.15s;
+            text-indent: 0;
+            line-height: 1;
         }
-        .player-controls button:active {
+        .jp-audio .jp-controls button:active {
             transform: scale(0.88);
             background: rgba(0,0,0,0.05);
         }
-        .player-controls button.mode-active {
-            color: #3b82f6;
+        .jp-audio .jp-controls button.jp-play,
+        .jp-audio .jp-controls button.jp-pause {
+            font-size: 2rem;
+            width: 56px;
+            height: 56px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
         }
-        audio {
-            width: 100%;
-            margin-top: 14px;
-            border-radius: 40px;
-            outline: none;
-            background: #eef2f7;
+        .jp-audio .jp-controls button.jp-play:active,
+        .jp-audio .jp-controls button.jp-pause:active {
+            background: #2563eb;
         }
+        .jp-audio .jp-progress {
+            background: #e8edf5;
+            border-radius: 10px;
+            height: 6px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        .jp-audio .jp-progress .jp-seek-bar {
+            background: transparent;
+            height: 100%;
+            cursor: pointer;
+        }
+        .jp-audio .jp-progress .jp-play-bar {
+            background: #3b82f6;
+            height: 100%;
+            border-radius: 10px;
+        }
+        .jp-audio .jp-time-holder {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #5e6f8d;
+            padding: 4px 0;
+        }
+        .jp-audio .jp-volume-bar {
+            background: #e8edf5;
+            border-radius: 10px;
+            height: 4px;
+            width: 60px;
+        }
+        .jp-audio .jp-volume-bar .jp-volume-bar-value {
+            background: #3b82f6;
+            border-radius: 10px;
+            height: 100%;
+        }
+        
         .file-list-header {
             display: flex;
             justify-content: space-between;
@@ -279,37 +338,77 @@
         .no-results.visible {
             display: block;
         }
+        
+        /* 模式按钮 */
+        .mode-btn {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0 8px;
+            color: #1f2a44;
+            transition: 0.15s;
+        }
+        .mode-btn:active {
+            transform: scale(0.88);
+        }
+        .mode-btn.mode-active {
+            color: #3b82f6;
+        }
+        
         @media (max-width: 480px) {
             .container { padding: 16px; }
             .file-item { padding: 10px 12px; }
             .file-item .file-name { max-width: 50%; font-size: 0.9rem; }
-            .player-controls { gap: 12px; }
-            .player-controls button { font-size: 1.3rem; width: 44px; height: 44px; }
             .search-box input { font-size: 0.9rem; padding: 10px 14px; }
+            .jp-audio .jp-controls button { font-size: 1.2rem; width: 40px; height: 40px; }
+            .jp-audio .jp-controls button.jp-play,
+            .jp-audio .jp-controls button.jp-pause { font-size: 1.6rem; width: 48px; height: 48px; }
         }
     </style>
 </head>
 <body>
 <div class="container" id="app">
+    <!-- 搜索栏 -->
     <div class="search-box">
         <input type="text" id="searchInput" placeholder="🔍 搜索歌曲..." autocomplete="off">
         <button class="clear-btn" id="clearSearchBtn" title="清除搜索">✕</button>
     </div>
     <div class="search-results-info" id="searchResultsInfo">找到 <span id="searchCount">0</span> 首歌曲</div>
 
+    <!-- jPlayer 播放器卡片 -->
     <div class="player-card" id="playerCard">
         <div class="now-playing">
             <span class="track-name" id="currentTrackName">🎧 未选择</span>
         </div>
-        <div class="player-controls">
-            <button id="modeBtn" title="播放模式">🔁</button>
-            <button id="prevBtn" title="上一曲">⏮</button>
-            <button id="playPauseBtn" title="播放/暂停">▶</button>
-            <button id="nextBtn" title="下一曲">⏭</button>
+        
+        <div id="jplayer"></div>
+        
+        <div class="jp-audio" role="application" aria-label="media player">
+            <div class="jp-type-single">
+                <div class="jp-gui jp-interface">
+                    <div class="jp-controls">
+                        <button class="mode-btn" id="modeBtn" title="播放模式">🔁</button>
+                        <button class="jp-previous" tabindex="0">⏮</button>
+                        <button class="jp-play" tabindex="0">▶</button>
+                        <button class="jp-pause" tabindex="0">⏸</button>
+                        <button class="jp-next" tabindex="0">⏭</button>
+                    </div>
+                    <div class="jp-progress">
+                        <div class="jp-seek-bar">
+                            <div class="jp-play-bar"></div>
+                        </div>
+                    </div>
+                    <div class="jp-time-holder">
+                        <span class="jp-current-time"></span>
+                        <span class="jp-duration"></span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <audio controls id="audioPlayer" style="width:100%;"></audio>
     </div>
 
+    <!-- 文件列表 -->
     <div class="file-list-header">
         <span>🎵 歌曲列表</span>
         <span class="badge" id="totalBadge">0 首</span>
@@ -323,6 +422,7 @@
         <div class="no-results" id="noResults">😕 没有找到匹配的歌曲</div>
     </div>
 
+    <!-- 分页 -->
     <div class="pagination" id="paginationControls">
         <button id="prevPageBtn" disabled>◀ 上一页</button>
         <span class="page-indicator" id="pageIndicator">1 / 1</span>
@@ -331,496 +431,406 @@
 </div>
 
 <script>
-    (function() {
-        "use strict";
+(function() {
+    "use strict";
 
-        const PAGE_SIZE = 10;
+    const PAGE_SIZE = 10;
+    const fileListEl = document.getElementById('fileList');
+    const loadingEl = document.getElementById('loadingIndicator');
+    const totalBadge = document.getElementById('totalBadge');
+    const currentTrackName = document.getElementById('currentTrackName');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    const pageIndicator = document.getElementById('pageIndicator');
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const searchResultsInfo = document.getElementById('searchResultsInfo');
+    const searchCount = document.getElementById('searchCount');
+    const noResults = document.getElementById('noResults');
+    const modeBtn = document.getElementById('modeBtn');
 
-        const fileListEl = document.getElementById('fileList');
-        const loadingEl = document.getElementById('loadingIndicator');
-        const totalBadge = document.getElementById('totalBadge');
-        const audioPlayer = document.getElementById('audioPlayer');
-        const currentTrackName = document.getElementById('currentTrackName');
+    let allFiles = [];
+    let filteredFiles = [];
+    let currentPage = 0;
+    let totalPages = 0;
+    let currentTrackIndex = -1;
+    let searchQuery = '';
+    let playMode = 'sequential';
+    let currentFilePath = '';
 
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const playPauseBtn = document.getElementById('playPauseBtn');
-        const modeBtn = document.getElementById('modeBtn');
+    // ============ 工具函数 ============
+    function getDisplayName(fullPath) {
+        if (!fullPath) return '未知';
+        return fullPath.split('/').pop() || fullPath;
+    }
 
-        const prevPageBtn = document.getElementById('prevPageBtn');
-        const nextPageBtn = document.getElementById('nextPageBtn');
-        const pageIndicator = document.getElementById('pageIndicator');
+    function getFileList() {
+        return searchQuery ? filteredFiles : allFiles;
+    }
 
-        const searchInput = document.getElementById('searchInput');
-        const clearSearchBtn = document.getElementById('clearSearchBtn');
-        const searchResultsInfo = document.getElementById('searchResultsInfo');
-        const searchCount = document.getElementById('searchCount');
-        const noResults = document.getElementById('noResults');
+    // ============ API 请求 ============
+    async function fetchFileList() {
+        loadingEl.style.display = 'block';
+        fileListEl.style.display = 'none';
 
-        let allFiles = [];
-        let filteredFiles = [];
-        let currentPage = 0;
-        let totalPages = 0;
-        let currentTrackIndex = -1;
-        let isPlaying = false;
-        let searchQuery = '';
-        let playMode = 'sequential';
-        
-        const audioCache = new Map();
+        const response = await fetch('/api/music?action=list&t=' + Date.now());
+        const data = await response.json();
+        allFiles = (data.files || []).filter(f => typeof f === 'string' && f.trim().length > 0);
+        allFiles.sort((a, b) => a.localeCompare(b));
 
-        function getDisplayName(fullPath) {
-            if (!fullPath) return '未知';
-            const parts = fullPath.split('/');
-            return parts[parts.length - 1] || fullPath;
+        totalBadge.textContent = allFiles.length + ' 首';
+        currentPage = 0;
+        totalPages = Math.ceil(allFiles.length / PAGE_SIZE) || 1;
+        renderPage(0);
+        updatePagination();
+
+        loadingEl.style.display = 'none';
+        fileListEl.style.display = 'flex';
+    }
+
+    async function getPresignedUrl(filePath) {
+        const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
+        const data = await resp.json();
+        return data.url;
+    }
+
+    // ============ 渲染列表 ============
+    function renderPage(page) {
+        const list = getFileList();
+        const start = page * PAGE_SIZE;
+        const end = Math.min(start + PAGE_SIZE, list.length);
+        const pageFiles = list.slice(start, end);
+
+        fileListEl.innerHTML = '';
+        if (pageFiles.length === 0) {
+            fileListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#6b7f9f;">没有歌曲</div>';
+            return;
         }
 
-        function getFileExtension(filename) {
-            return filename.split('.').pop().toLowerCase();
-        }
-
-        function getMimeType(filename) {
-            const ext = getFileExtension(filename);
-            const mimeMap = {
-                'mp3': 'audio/mpeg',
-                'm4a': 'audio/mp4',
-                'aac': 'audio/aac',
-                'flac': 'audio/flac',
-                'wav': 'audio/wav',
-                'ogg': 'audio/ogg',
-                'opus': 'audio/opus'
-            };
-            return mimeMap[ext] || 'audio/mpeg';
-        }
-
-        function clearAudioCache() {
-            for (const [key, blobUrl] of audioCache) {
-                try { URL.revokeObjectURL(blobUrl); } catch(e) {}
+        for (const filePath of pageFiles) {
+            const displayName = getDisplayName(filePath);
+            const globalIndex = allFiles.indexOf(filePath);
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            if (globalIndex === currentTrackIndex) {
+                item.classList.add('active');
             }
-            audioCache.clear();
-        }
 
-        function getCurrentFileList() {
-            return searchQuery ? filteredFiles : allFiles;
-        }
-
-        function performSearch(query) {
-            searchQuery = query.trim().toLowerCase();
-            
-            if (!searchQuery) {
-                filteredFiles = [];
-                searchResultsInfo.classList.remove('visible');
-                noResults.classList.remove('visible');
-                clearSearchBtn.classList.remove('visible');
-            } else {
-                filteredFiles = allFiles.filter(file => 
-                    getDisplayName(file).toLowerCase().includes(searchQuery)
-                );
-                searchResultsInfo.classList.add('visible');
-                searchCount.textContent = filteredFiles.length;
-                clearSearchBtn.classList.add('visible');
-                
-                if (filteredFiles.length === 0) {
-                    noResults.classList.add('visible');
-                } else {
-                    noResults.classList.remove('visible');
-                }
-            }
-            
-            currentPage = 0;
-            const fileList = getCurrentFileList();
-            totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
-            renderPage(currentPage);
-            updatePaginationButtons();
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'file-name';
+            nameSpan.title = filePath;
             
             if (searchQuery) {
-                totalBadge.textContent = filteredFiles.length + ' 首 (筛选)';
-            } else {
-                totalBadge.textContent = allFiles.length + ' 首';
-            }
-        }
-
-        async function fetchFileList() {
-            loadingEl.style.display = 'block';
-            fileListEl.style.display = 'none';
-
-            const response = await fetch('/api/music?action=list&t=' + Date.now());
-            const data = await response.json();
-            allFiles = data.files.filter(f => typeof f === 'string' && f.trim().length > 0);
-            allFiles.sort((a, b) => a.localeCompare(b));
-
-            totalBadge.textContent = allFiles.length + ' 首';
-            currentPage = 0;
-            totalPages = Math.ceil(allFiles.length / PAGE_SIZE);
-            renderPage(currentPage);
-            updatePaginationButtons();
-
-            loadingEl.style.display = 'none';
-            fileListEl.style.display = 'flex';
-        }
-
-        function renderPage(page) {
-            const fileList = getCurrentFileList();
-            const start = page * PAGE_SIZE;
-            const end = Math.min(start + PAGE_SIZE, fileList.length);
-            const pageFiles = fileList.slice(start, end);
-
-            fileListEl.innerHTML = '';
-            if (pageFiles.length === 0) {
-                fileListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#6b7f9f;">没有歌曲</div>';
-                return;
-            }
-
-            for (const filePath of pageFiles) {
-                const displayName = getDisplayName(filePath);
-                const globalIndex = allFiles.indexOf(filePath);
-                const item = document.createElement('div');
-                item.className = 'file-item';
-                if (globalIndex === currentTrackIndex) {
-                    item.classList.add('active');
-                }
-
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'file-name';
-                nameSpan.title = filePath;
-                
-                if (searchQuery) {
-                    const lowerName = displayName.toLowerCase();
-                    const index = lowerName.indexOf(searchQuery);
-                    if (index !== -1) {
-                        const before = displayName.substring(0, index);
-                        const match = displayName.substring(index, index + searchQuery.length);
-                        const after = displayName.substring(index + searchQuery.length);
-                        nameSpan.innerHTML = before + '<span class="highlight">' + match + '</span>' + after;
-                    } else {
-                        nameSpan.textContent = displayName;
-                    }
+                const lowerName = displayName.toLowerCase();
+                const idx = lowerName.indexOf(searchQuery);
+                if (idx !== -1) {
+                    nameSpan.innerHTML = displayName.substring(0, idx) + 
+                        '<span class="highlight">' + displayName.substring(idx, idx + searchQuery.length) + '</span>' + 
+                        displayName.substring(idx + searchQuery.length);
                 } else {
                     nameSpan.textContent = displayName;
                 }
-
-                const playBtn = document.createElement('button');
-                playBtn.className = 'play-btn';
-                playBtn.dataset.file = filePath;
-                playBtn.dataset.index = globalIndex;
-                playBtn.textContent = (globalIndex === currentTrackIndex && isPlaying) ? '▶ 播放中' : '▶ 播放';
-
-                playBtn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    const index = parseInt(playBtn.dataset.index);
-                    if (!isNaN(index) && index >= 0) {
-                        await playTrack(index, playBtn);
-                    }
-                });
-
-                item.appendChild(nameSpan);
-                item.appendChild(playBtn);
-                fileListEl.appendChild(item);
-            }
-
-            pageIndicator.textContent = `${page + 1} / ${totalPages || 1}`;
-        }
-
-        async function getPresignedUrl(filePath) {
-            const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
-            const data = await resp.json();
-            return data.url;
-        }
-
-        async function downloadAndCache(filePath) {
-            const url = await getPresignedUrl(filePath);
-            const audioResp = await fetch(url);
-            const audioData = await audioResp.arrayBuffer();
-            const mimeType = getMimeType(filePath);
-            const blob = new Blob([audioData], { type: mimeType });
-            const blobUrl = URL.createObjectURL(blob);
-            audioCache.set(filePath, blobUrl);
-            return blobUrl;
-        }
-
-        async function getAudioSource(filePath, isFirstPlay) {
-            if (audioCache.has(filePath)) {
-                return audioCache.get(filePath);
-            }
-            
-            if (isFirstPlay) {
-                return await getPresignedUrl(filePath);
             } else {
-                return await downloadAndCache(filePath);
+                nameSpan.textContent = displayName;
             }
-        }
 
-        async function playTrack(index, btnElement) {
-            if (index < 0 || index >= allFiles.length) {
-                return;
-            }
+            const playBtn = document.createElement('button');
+            playBtn.className = 'play-btn';
+            playBtn.dataset.file = filePath;
+            playBtn.dataset.index = globalIndex;
             
-            const filePath = allFiles[index];
-            if (!filePath) {
-                return;
-            }
-            
-            if (currentTrackIndex !== -1 && currentTrackIndex !== index) {
-                clearAudioCache();
-            }
-            
-            currentTrackIndex = index;
-            
-            document.querySelectorAll('.file-item').forEach((el) => {
-                const btn = el.querySelector('.play-btn');
-                if (btn) {
-                    const idx = parseInt(btn.dataset.index);
-                    el.classList.toggle('active', idx === index);
+            const isCurrent = (globalIndex === currentTrackIndex);
+            const isPlaying = isCurrent && jplayerInstance && !jplayerInstance.paused;
+            playBtn.textContent = isPlaying ? '▶ 播放中' : '▶ 播放';
+            if (isPlaying) playBtn.classList.add('playing');
+
+            playBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const idx = parseInt(this.dataset.index);
+                if (!isNaN(idx) && idx >= 0) {
+                    playTrack(idx);
                 }
             });
-            
-            document.querySelectorAll('.play-btn').forEach(b => {
-                const idx = parseInt(b.dataset.index);
+
+            item.appendChild(nameSpan);
+            item.appendChild(playBtn);
+            fileListEl.appendChild(item);
+        }
+
+        pageIndicator.textContent = (page + 1) + ' / ' + (totalPages || 1);
+    }
+
+    function updatePagination() {
+        const list = getFileList();
+        totalPages = Math.ceil(list.length / PAGE_SIZE) || 1;
+        prevPageBtn.disabled = currentPage === 0;
+        nextPageBtn.disabled = currentPage >= totalPages - 1;
+        pageIndicator.textContent = (currentPage + 1) + ' / ' + totalPages;
+    }
+
+    function goToPage(page) {
+        const list = getFileList();
+        totalPages = Math.ceil(list.length / PAGE_SIZE) || 1;
+        if (page < 0 || page >= totalPages) return;
+        currentPage = page;
+        renderPage(currentPage);
+        updatePagination();
+        document.getElementById('fileListContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ============ 搜索 ============
+    function performSearch(query) {
+        searchQuery = query.trim().toLowerCase();
+        
+        if (!searchQuery) {
+            filteredFiles = [];
+            searchResultsInfo.classList.remove('visible');
+            noResults.classList.remove('visible');
+            clearSearchBtn.classList.remove('visible');
+        } else {
+            filteredFiles = allFiles.filter(f => getDisplayName(f).toLowerCase().includes(searchQuery));
+            searchResultsInfo.classList.add('visible');
+            searchCount.textContent = filteredFiles.length;
+            clearSearchBtn.classList.add('visible');
+            noResults.classList.toggle('visible', filteredFiles.length === 0);
+        }
+        
+        currentPage = 0;
+        totalPages = Math.ceil(getFileList().length / PAGE_SIZE) || 1;
+        renderPage(currentPage);
+        updatePagination();
+        totalBadge.textContent = searchQuery ? filteredFiles.length + ' 首 (筛选)' : allFiles.length + ' 首';
+    }
+
+    // ============ jPlayer 播放控制 ============
+    function playTrack(index) {
+        if (index < 0 || index >= allFiles.length) return;
+        const filePath = allFiles[index];
+        if (!filePath) return;
+
+        currentTrackIndex = index;
+        currentFilePath = filePath;
+        currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
+
+        // 更新列表按钮状态
+        document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.play-btn').forEach(btn => {
+            const idx = parseInt(btn.dataset.index);
+            if (idx === index) {
+                btn.closest('.file-item').classList.add('active');
+                btn.textContent = '⏳ 加载中';
+                btn.disabled = true;
+            } else {
+                btn.textContent = '▶ 播放';
+                btn.disabled = false;
+                btn.classList.remove('playing');
+            }
+        });
+
+        // 获取签名 URL 并播放
+        getPresignedUrl(filePath).then(url => {
+            if (jplayerInstance) {
+                jplayerInstance.jPlayer('setMedia', {
+                    mp3: url
+                }).jPlayer('play');
+            }
+        }).catch(err => {
+            console.error('播放失败:', err);
+            document.querySelectorAll('.play-btn').forEach(btn => {
+                const idx = parseInt(btn.dataset.index);
                 if (idx === index) {
-                    b.textContent = '⏳ 加载中';
-                    b.disabled = true;
-                } else {
-                    b.textContent = '▶ 播放';
-                    b.disabled = false;
-                    b.classList.remove('playing');
+                    btn.textContent = '▶ 播放';
+                    btn.disabled = false;
                 }
             });
+        });
+    }
 
-            const isFirstPlay = !audioCache.has(filePath);
-            const source = await getAudioSource(filePath, isFirstPlay);
-            
-            audioPlayer.src = source;
-            audioPlayer.load();
-            
-            await new Promise((resolve, reject) => {
-                let resolved = false;
-                const timeout = setTimeout(() => {
-                    if (!resolved) {
-                        resolved = true;
-                        reject(new Error('加载超时'));
-                    }
-                }, 8000);
-                
-                const onReady = () => {
-                    if (!resolved) {
-                        resolved = true;
-                        clearTimeout(timeout);
-                        audioPlayer.removeEventListener('canplay', onReady);
-                        audioPlayer.removeEventListener('loadeddata', onReady);
-                        resolve();
-                    }
-                };
-                
-                if (audioPlayer.readyState >= 3) {
-                    resolved = true;
-                    clearTimeout(timeout);
-                    resolve();
-                    return;
+    function updatePlayBtnState() {
+        document.querySelectorAll('.play-btn').forEach(btn => {
+            const idx = parseInt(btn.dataset.index);
+            if (idx === currentTrackIndex) {
+                const isPlaying = jplayerInstance && !jplayerInstance.paused;
+                btn.textContent = isPlaying ? '▶ 播放中' : '▶ 播放';
+                btn.classList.toggle('playing', isPlaying);
+                btn.disabled = false;
+                if (isPlaying) {
+                    btn.closest('.file-item').classList.add('active');
                 }
-                
-                audioPlayer.addEventListener('canplay', onReady);
-                audioPlayer.addEventListener('loadeddata', onReady);
-            });
-            
-            await audioPlayer.play();
-            
-            currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-            updatePlayPauseButton(true);
-            isPlaying = true;
-            document.querySelectorAll('.play-btn').forEach(b => {
-                const idx = parseInt(b.dataset.index);
-                b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
-                b.disabled = false;
-                b.classList.toggle('playing', idx === index);
-            });
-
-            if (isFirstPlay && !audioCache.has(filePath)) {
-                downloadAndCache(filePath).catch(() => {});
             }
+        });
+    }
+
+    function playNext() {
+        if (allFiles.length === 0 || currentTrackIndex < 0) return;
+        let idx;
+        switch (playMode) {
+            case 'random':
+                do {
+                    idx = Math.floor(Math.random() * allFiles.length);
+                } while (idx === currentTrackIndex && allFiles.length > 1);
+                break;
+            case 'repeat-one':
+                idx = currentTrackIndex;
+                break;
+            default:
+                idx = currentTrackIndex + 1;
+                if (idx >= allFiles.length) idx = 0;
         }
+        playTrack(idx);
+    }
 
-        function togglePlayPause() {
-            if (audioPlayer.paused) {
-                audioPlayer.play().catch(() => {});
-                updatePlayPauseButton(true);
-                isPlaying = true;
-                document.querySelectorAll('.play-btn').forEach(b => {
-                    const idx = parseInt(b.dataset.index);
-                    if (idx === currentTrackIndex) {
-                        b.textContent = '▶ 播放中';
-                        b.classList.add('playing');
-                    }
-                });
-            } else {
-                audioPlayer.pause();
-                updatePlayPauseButton(false);
-                isPlaying = false;
-                document.querySelectorAll('.play-btn').forEach(b => {
-                    const idx = parseInt(b.dataset.index);
-                    if (idx === currentTrackIndex) {
-                        b.textContent = '▶ 播放';
-                        b.classList.remove('playing');
-                    }
-                });
-            }
-        }
-
-        function updatePlayPauseButton(playing) {
-            playPauseBtn.textContent = playing ? '⏸' : '▶';
-        }
-
-        function playPrevious() {
-            if (allFiles.length === 0 || currentTrackIndex < 0) return;
-            let newIndex;
-            if (playMode === 'random') {
-                newIndex = getRandomTrack();
-            } else {
-                newIndex = currentTrackIndex - 1;
-                if (newIndex < 0) newIndex = allFiles.length - 1;
-            }
-            if (newIndex !== currentTrackIndex) {
-                clearAudioCache();
-            }
-            playTrack(newIndex);
-        }
-
-        function playNext() {
-            if (allFiles.length === 0 || currentTrackIndex < 0) return;
-            let newIndex;
-            if (playMode === 'random') {
-                newIndex = getRandomTrack();
-            } else if (playMode === 'repeat-one') {
-                newIndex = currentTrackIndex;
-            } else {
-                newIndex = currentTrackIndex + 1;
-                if (newIndex >= allFiles.length) newIndex = 0;
-            }
-            if (newIndex !== currentTrackIndex) {
-                clearAudioCache();
-            }
-            playTrack(newIndex);
-        }
-
-        function getRandomTrack() {
-            if (allFiles.length === 0) return -1;
-            let index;
+    function playPrevious() {
+        if (allFiles.length === 0 || currentTrackIndex < 0) return;
+        let idx;
+        if (playMode === 'random') {
             do {
-                index = Math.floor(Math.random() * allFiles.length);
-            } while (index === currentTrackIndex && allFiles.length > 1);
-            return index;
+                idx = Math.floor(Math.random() * allFiles.length);
+            } while (idx === currentTrackIndex && allFiles.length > 1);
+        } else {
+            idx = currentTrackIndex - 1;
+            if (idx < 0) idx = allFiles.length - 1;
+        }
+        playTrack(idx);
+    }
+
+    function togglePlayMode() {
+        const modes = ['sequential', 'random', 'repeat-one'];
+        const icons = ['🔁', '🔀', '🔂'];
+        const idx = (modes.indexOf(playMode) + 1) % modes.length;
+        playMode = modes[idx];
+        modeBtn.textContent = icons[idx];
+        // 模式按钮高亮
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('mode-active'));
+        modeBtn.classList.add('mode-active');
+    }
+
+    // ============ 初始化 jPlayer ============
+    function initJPlayer() {
+        // 销毁旧实例（如果有）
+        if (jplayerInstance) {
+            try { jplayerInstance.jPlayer('destroy'); } catch(e) {}
         }
 
-        function togglePlayMode() {
-            const modes = ['sequential', 'random', 'repeat-one'];
-            const icons = ['🔁', '🔀', '🔂'];
-            
-            const currentIdx = modes.indexOf(playMode);
-            const nextIdx = (currentIdx + 1) % modes.length;
-            playMode = modes[nextIdx];
-            
-            modeBtn.textContent = icons[nextIdx];
-            
-            document.querySelectorAll('.player-controls button').forEach(b => b.classList.remove('mode-active'));
-            modeBtn.classList.add('mode-active');
-        }
-
-        function setupAudioEvents() {
-            audioPlayer.addEventListener('ended', () => {
+        jplayerInstance = $('#jplayer');
+        jplayerInstance.jPlayer({
+            ready: function() {
+                // 可以在这里做加载完成后的操作
+            },
+            ended: function() {
+                // 歌曲播放结束
                 if (playMode === 'repeat-one') {
+                    // 单曲循环：重新播放
                     if (currentTrackIndex >= 0) {
                         const filePath = allFiles[currentTrackIndex];
-                        if (audioCache.has(filePath)) {
-                            audioPlayer.currentTime = 0;
-                            audioPlayer.play().catch(() => {});
-                        } else {
-                            playTrack(currentTrackIndex);
+                        if (filePath) {
+                            getPresignedUrl(filePath).then(url => {
+                                jplayerInstance.jPlayer('setMedia', { mp3: url }).jPlayer('play');
+                            });
                         }
                     }
                 } else {
                     playNext();
                 }
-            });
+            },
+            play: function() {
+                // 播放开始
+                updatePlayBtnState();
+                // 更新锁屏信息（iOS）
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: getDisplayName(currentFilePath),
+                        artist: 'R2 音乐'
+                    });
+                    navigator.mediaSession.playbackState = 'playing';
+                }
+            },
+            pause: function() {
+                updatePlayBtnState();
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'paused';
+                }
+            },
+            error: function(event) {
+                console.error('jPlayer 错误:', event);
+                updatePlayBtnState();
+                // 发生错误时尝试播下一首
+                if (currentTrackIndex >= 0) {
+                    setTimeout(playNext, 1000);
+                }
+            },
+            swfPath: 'https://cdnjs.cloudflare.com/ajax/libs/jplayer/2.9.2/jplayer.swf',
+            solution: 'html, flash',
+            supplied: 'mp3, m4a, oga',
+            wmode: 'window',
+            useStateClassSkin: true,
+            autoBlur: false,
+            smoothPlayBar: true,
+            keyEnabled: true,
+            remainingDuration: false,
+            toggleDuration: false
+        });
 
-            playPauseBtn.addEventListener('click', togglePlayPause);
-            prevBtn.addEventListener('click', playPrevious);
-            nextBtn.addEventListener('click', playNext);
-            modeBtn.addEventListener('click', togglePlayMode);
-            
-            audioPlayer.addEventListener('play', () => {
-                updatePlayPauseButton(true);
-                isPlaying = true;
-            });
-            
-            audioPlayer.addEventListener('pause', () => {
-                updatePlayPauseButton(false);
-                isPlaying = false;
-            });
-        }
+        // 绑定控制按钮
+        // 注意：jPlayer 会自动处理 .jp-play, .jp-pause, .jp-next, .jp-previous 的点击
+        // 但我们需要额外绑定 next/previous 逻辑
+        $('.jp-next').on('click', function(e) {
+            e.preventDefault();
+            playNext();
+        });
+        $('.jp-previous').on('click', function(e) {
+            e.preventDefault();
+            playPrevious();
+        });
 
-        function setupSearchEvents() {
-            searchInput.addEventListener('input', (e) => {
-                performSearch(e.target.value);
-            });
-            
-            clearSearchBtn.addEventListener('click', () => {
-                searchInput.value = '';
-                performSearch('');
-                searchInput.focus();
-            });
-        }
+        // 模式按钮
+        modeBtn.addEventListener('click', togglePlayMode);
+        modeBtn.classList.add('mode-active');
+    }
 
-        function goToPage(page) {
-            const fileList = getCurrentFileList();
-            totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
-            if (page < 0 || page >= totalPages) return;
-            currentPage = page;
-            renderPage(currentPage);
-            updatePaginationButtons();
-            document.getElementById('fileListContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+    // ============ 分页事件 ============
+    function initPagination() {
+        prevPageBtn.addEventListener('click', function() {
+            if (currentPage > 0) goToPage(currentPage - 1);
+        });
+        nextPageBtn.addEventListener('click', function() {
+            const list = getFileList();
+            totalPages = Math.ceil(list.length / PAGE_SIZE) || 1;
+            if (currentPage < totalPages - 1) goToPage(currentPage + 1);
+        });
+    }
 
-        function updatePaginationButtons() {
-            const fileList = getCurrentFileList();
-            totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
-            prevPageBtn.disabled = currentPage === 0;
-            nextPageBtn.disabled = currentPage >= totalPages - 1;
-            pageIndicator.textContent = `${currentPage + 1} / ${totalPages || 1}`;
-        }
+    // ============ 搜索事件 ============
+    function initSearch() {
+        searchInput.addEventListener('input', function(e) {
+            performSearch(e.target.value);
+        });
+        clearSearchBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            performSearch('');
+            searchInput.focus();
+        });
+    }
 
-        function initPaginationEvents() {
-            prevPageBtn.addEventListener('click', () => {
-                if (currentPage > 0) goToPage(currentPage - 1);
-            });
-            nextPageBtn.addEventListener('click', () => {
-                const fileList = getCurrentFileList();
-                totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
-                if (currentPage < totalPages - 1) goToPage(currentPage + 1);
-            });
-        }
+    // ============ 启动 ============
+    async function init() {
+        initPagination();
+        initSearch();
+        initJPlayer();
+        await fetchFileList();
+        currentTrackIndex = -1;
+        currentTrackName.textContent = '🎧 未选择';
+        renderPage(0);
+    }
 
-        async function init() {
-            initPaginationEvents();
-            setupAudioEvents();
-            setupSearchEvents();
-            
-            modeBtn.textContent = '🔁';
-            modeBtn.classList.add('mode-active');
-            
-            await fetchFileList();
-            
-            // ✅ 完全移除默认选择，保持"未选择"状态
-            currentTrackIndex = -1;
-            currentTrackName.textContent = '🎧 未选择';
-            renderPage(currentPage);
-        }
+    // 等待 DOM 和 jQuery 都加载完成
+    if (document.readyState === 'complete') {
+        init();
+    } else {
+        document.addEventListener('DOMContentLoaded', init);
+    }
 
-        if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            init();
-        } else {
-            document.addEventListener('DOMContentLoaded', init);
-        }
-
-    })();
+})();
 </script>
-
 </body>
 </html>
