@@ -25,48 +25,28 @@ export default async function handler(req, res) {
 
     const { action, key } = req.query;
 
+    const aws = new AwsClient({
+      accessKeyId: accessKeyId,
+      secretAccessKey: secretAccessKey,
+      service: 's3',
+      region: 'us-east-1',
+    });
+
     if (action === 'list') {
-      const listUrl = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/?list-type=2`;
-      
-      const aws = new AwsClient({
-        accessKeyId: accessKeyId,
-        secretAccessKey: secretAccessKey,
-        service: 's3',
-        region: 'us-east-1',
-      });
-
-      const signedUrl = await aws.sign(listUrl, {
-        method: 'GET',
-        expiresIn: 300,
-      });
-
-      return res.status(200).json({ success: true, url: signedUrl });
+      const url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/?list-type=2`;
+      const signed = await aws.sign(url, { method: 'GET', expiresIn: 300 });
+      return res.status(200).json({ success: true, url: signed.url || signed });
 
     } else if (action === 'play' && key) {
-      const encodedKey = encodeURIComponent(key);
-      const playUrl = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodedKey}`;
+      const url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodeURIComponent(key)}`;
+      const signed = await aws.sign(url, { method: 'GET', expiresIn: 3600 });
       
-      const aws = new AwsClient({
-        accessKeyId: accessKeyId,
-        secretAccessKey: secretAccessKey,
-        service: 's3',
-        region: 'us-east-1',
-      });
-
-      const signedUrl = await aws.sign(playUrl, {
-        method: 'GET',
-        expiresIn: 3600,
-      });
-
-      let finalUrl = signedUrl;
-      if (customDomain) {
-        finalUrl = signedUrl.replace(
-          `${accountId}.r2.cloudflarestorage.com/${bucketName}`,
-          customDomain
-        );
+      let result = signed.url || signed;
+      if (customDomain && result) {
+        result = result.replace(`${accountId}.r2.cloudflarestorage.com/${bucketName}`, customDomain);
       }
 
-      return res.status(200).json({ success: true, url: finalUrl });
+      return res.status(200).json({ success: true, url: result });
 
     } else {
       return res.status(400).json({ success: false, error: 'Missing action or key parameter' });
