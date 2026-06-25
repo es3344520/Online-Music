@@ -562,6 +562,36 @@
             }
         }
 
+        // ===== 🔥 iOS 后台播放支持（只添加了这个函数） =====
+        async function enableBackgroundAudio() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    const audioCtx = new AudioContext();
+                    if (audioCtx.state === 'suspended') {
+                        await audioCtx.resume();
+                    }
+                    // 创建极短的静音音频保持会话活跃
+                    const oscillator = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    gain.gain.value = 0.001;
+                    oscillator.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    oscillator.start(0);
+                    oscillator.stop(0.05);
+                    // 声明后台播放
+                    if (navigator.audioSession) {
+                        navigator.audioSession.type = 'playback';
+                    }
+                }
+                console.log('✅ iOS 后台音频已激活');
+                return true;
+            } catch (e) {
+                console.log('⚠️ 后台音频激活失败（不影响播放）:', e);
+                return false;
+            }
+        }
+
         async function playTrack(index, btnElement) {
             if (index < 0 || index >= allFiles.length) {
                 return;
@@ -632,6 +662,17 @@
                 audioPlayer.addEventListener('canplay', onReady);
                 audioPlayer.addEventListener('loadeddata', onReady);
             });
+            
+            // ===== 🔥 播放前确保音频上下文激活（iOS 后台播放） =====
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    const ctx = new AudioContext();
+                    if (ctx.state === 'suspended') {
+                        await ctx.resume();
+                    }
+                }
+            } catch (e) {}
             
             await audioPlayer.play();
             
@@ -821,6 +862,9 @@
         }
 
         async function init() {
+            // ===== 🔥 关键：激活 iOS 后台播放（只加了这一行） =====
+            await enableBackgroundAudio();
+            
             initPaginationEvents();
             setupAudioEvents();
             setupSearchEvents();
