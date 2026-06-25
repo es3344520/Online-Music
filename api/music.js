@@ -1,4 +1,5 @@
-import { AwsClient } from 'aws4fetch';
+import aws4 from 'aws4';
+import { URL } from 'url';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,32 +26,43 @@ export default async function handler(req, res) {
 
     const { action, key } = req.query;
 
-    const aws = new AwsClient({
-      accessKeyId: accessKeyId,
-      secretAccessKey: secretAccessKey,
-      service: 's3',
-      region: 'us-east-1',
-    });
-
+    let url;
     if (action === 'list') {
-      const url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/?list-type=2`;
-      const signed = await aws.sign(url, { method: 'GET', expiresIn: 300 });
-      return res.status(200).json({ success: true, url: signed.url || signed });
-
+      url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/?list-type=2`;
     } else if (action === 'play' && key) {
-      const url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodeURIComponent(key)}`;
-      const signed = await aws.sign(url, { method: 'GET', expiresIn: 3600 });
-      
-      let result = signed.url || signed;
-      if (customDomain && result) {
-        result = result.replace(`${accountId}.r2.cloudflarestorage.com/${bucketName}`, customDomain);
-      }
-
-      return res.status(200).json({ success: true, url: result });
-
+      const encodedKey = encodeURIComponent(key);
+      url = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodedKey}`;
     } else {
       return res.status(400).json({ success: false, error: 'Missing action or key parameter' });
     }
+
+    const parsedUrl = new URL(url);
+    
+    const signed = aws4.sign({
+      host: parsedUrl.host,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'GET',
+      service: 's3',
+      region: 'us-east-1',
+      headers: {
+        'Host': parsedUrl.host
+      }
+    }, {
+      accessKeyId: accessKeyId,
+      secretAccessKey: secretAccessKey
+    });
+
+    const signedUrl = `https://${signed.host}${signed.path}`;
+
+    let finalUrl = signedUrl;
+    if (customDomain && action === 'play') {
+      finalUrl = signedUrl.replace(
+        `${accountId}.r2.cloudflarestorage.com/${bucketName}`,
+        customDomain
+      );
+    }
+
+    return res.status(200).json({ success: true, url: finalUrl });
 
   } catch (error) {
     console.error('Sign error:', error);
