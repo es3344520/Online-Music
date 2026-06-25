@@ -1,7 +1,6 @@
-const { S3Client, ListObjectsV2Command, GetObjectCommand } = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+import { AwsClient } from 'aws4fetch';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   
@@ -9,89 +8,72 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const {
-      R2_ACCOUNT_ID,
-      R2_ACCESS_KEY_ID,
-      R2_SECRET_ACCESS_KEY,
-      R2_BUCKET_NAME,
-      R2_CUSTOM_DOMAIN
-    } = process.env;
+    const accountId = process.env.R2_ACCOUNT_ID;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    const bucketName = process.env.R2_BUCKET_NAME;
+    const customDomain = process.env.R2_CUSTOM_DOMAIN;
 
-    if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
-      return res.status(500).json({
-        success: false,
-        message: '服务器配置错误'
-      });
+    if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
+      return res.status(500).json({ success: false, error: 'Missing R2 configuration' });
     }
 
-    const s3Client = new S3Client({
-      region: 'auto',
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: R2_ACCESS_KEY_ID,
-        secretAccessKey: R2_SECRET_ACCESS_KEY,
-      },
-    });
+    const { action, key } = req.query;
 
-    const { action, file } = req.query;
-
-    if (!action || action === 'list') {
-      const command = new ListObjectsV2Command({
-        Bucket: R2_BUCKET_NAME,
-      });
-
-      const response = await s3Client.send(command);
+    if (action === 'list') {
+      const listUrl = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/?list-type=2`;
       
-      const files = response.Contents
-        ?.filter(item => !item.Key.endsWith('/'))
-        .map(item => item.Key) || [];
-
-      return res.status(200).json({
-        success: true,
-        files: files
+      const aws = new AwsClient({
+        accessKeyId: accessKeyId,
+        secretAccessKey: secretAccessKey,
+        service: 's3',
+        region: 'us-east-1',
       });
-    }
 
-    if (action === 'sign') {
-      if (!file) {
-        return res.status(400).json({
-          success: false,
-          message: '缺少 file 参数'
-        });
+      const signedUrl = await aws.sign(listUrl, {
+        method: 'GET',
+        expiresIn: 300,
+      });
+
+      return res.status(200).json({ success: true, url: signedUrl });
+
+    } else if (action === 'play' && key) {
+      const encodedKey = encodeURIComponent(key);
+      const playUrl = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${encodedKey}`;
+      
+      const aws = new AwsClient({
+        accessKeyId: accessKeyId,
+        secretAccessKey: secretAccessKey,
+        service: 's3',
+        region: 'us-east-1',
+      });
+
+      const signedUrl = await aws.sign(playUrl, {
+        method: 'GET',
+        expiresIn: 3600,
+      });
+
+      let finalUrl = signedUrl;
+      if (customDomain) {
+        finalUrl = signedUrl.replace(
+          `${accountId}.r2.cloudflarestorage.com/${bucketName}`,
+          customDomain
+        );
       }
 
-      const command = new GetObjectCommand({
-        Bucket: R2_BUCKET_NAME,
-        Key: file,
-      });
+      return res.status(200).json({ success: true, url: finalUrl });
 
-      let signedUrl = await getSignedUrl(s3Client, command, {
-        expiresIn: 600,
-      });
-
-      if (R2_CUSTOM_DOMAIN) {
-        const customDomain = R2_CUSTOM_DOMAIN.replace(/^https?:\/\//, '');
-        const urlObj = new URL(signedUrl);
-        signedUrl = `https://${customDomain}${urlObj.pathname}${urlObj.search}`;
-      }
-
-      return res.status(200).json({
-        success: true,
-        url: signedUrl
-      });
+    } else {
+      return res.status(400).json({ success: false, error: 'Missing action or key parameter' });
     }
-
-    return res.status(400).json({
-      success: false,
-      message: '无效的 action 参数'
-    });
 
   } catch (error) {
-    console.error('API error:', error);
-    res.status(500).json({
-      success: false,
-      message: '服务器错误'
-    });
+    console.error('Sign error:', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
-};
+}
