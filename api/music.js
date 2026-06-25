@@ -71,9 +71,9 @@ module.exports = async (req, res) => {
       });
 
       if (R2_CUSTOM_DOMAIN) {
-        const originalDomain = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}`;
         const customDomain = R2_CUSTOM_DOMAIN.replace(/^https?:\/\//, '');
-        signedUrl = signedUrl.replace(originalDomain, customDomain);
+        const urlObj = new URL(signedUrl);
+        signedUrl = `https://${customDomain}${urlObj.pathname}${urlObj.search}`;
       }
 
       return res.status(200).json({
