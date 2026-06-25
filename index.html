@@ -332,514 +332,516 @@
     </div>
 </div>
 
-<script src="/js/jquery.min.js"></script>
-<script src="/js/jplayer.min.js"></script>
 <script>
-(function() {
-    "use strict";
+    (function() {
+        "use strict";
 
-    const PAGE_SIZE = 10;
+        const PAGE_SIZE = 10;
 
-    const fileListEl = document.getElementById('fileList');
-    const loadingEl = document.getElementById('loadingIndicator');
-    const totalBadge = document.getElementById('totalBadge');
-    const audioPlayer = document.getElementById('audioPlayer');
-    const currentTrackName = document.getElementById('currentTrackName');
+        const fileListEl = document.getElementById('fileList');
+        const loadingEl = document.getElementById('loadingIndicator');
+        const totalBadge = document.getElementById('totalBadge');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const currentTrackName = document.getElementById('currentTrackName');
 
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const playPauseBtn = document.getElementById('playPauseBtn');
-    const modeBtn = document.getElementById('modeBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const modeBtn = document.getElementById('modeBtn');
 
-    const prevPageBtn = document.getElementById('prevPageBtn');
-    const nextPageBtn = document.getElementById('nextPageBtn');
-    const pageIndicator = document.getElementById('pageIndicator');
+        const prevPageBtn = document.getElementById('prevPageBtn');
+        const nextPageBtn = document.getElementById('nextPageBtn');
+        const pageIndicator = document.getElementById('pageIndicator');
 
-    const searchInput = document.getElementById('searchInput');
-    const clearSearchBtn = document.getElementById('clearSearchBtn');
-    const searchResultsInfo = document.getElementById('searchResultsInfo');
-    const searchCount = document.getElementById('searchCount');
-    const noResults = document.getElementById('noResults');
+        const searchInput = document.getElementById('searchInput');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+        const searchResultsInfo = document.getElementById('searchResultsInfo');
+        const searchCount = document.getElementById('searchCount');
+        const noResults = document.getElementById('noResults');
 
-    let allFiles = [];
-    let filteredFiles = [];
-    let currentPage = 0;
-    let totalPages = 0;
-    let currentTrackIndex = -1;
-    let isPlaying = false;
-    let searchQuery = '';
-    let playMode = 'sequential';
-    
-    const urlCache = new Map();
-
-    function getDisplayName(fullPath) {
-        if (!fullPath) return '未知';
-        const parts = fullPath.split('/');
-        return parts[parts.length - 1] || fullPath;
-    }
-
-    function getFileExtension(filename) {
-        return filename.split('.').pop().toLowerCase();
-    }
-
-    function getMimeType(filename) {
-        const ext = getFileExtension(filename);
-        const mimeMap = {
-            'mp3': 'audio/mpeg',
-            'm4a': 'audio/mp4',
-            'aac': 'audio/aac',
-            'flac': 'audio/flac',
-            'wav': 'audio/wav',
-            'ogg': 'audio/ogg',
-            'opus': 'audio/opus'
-        };
-        return mimeMap[ext] || 'audio/mpeg';
-    }
-
-    function clearUrlCache() {
-        urlCache.clear();
-    }
-
-    function getCurrentFileList() {
-        return searchQuery ? filteredFiles : allFiles;
-    }
-
-    function performSearch(query) {
-        searchQuery = query.trim().toLowerCase();
+        let allFiles = [];
+        let filteredFiles = [];
+        let currentPage = 0;
+        let totalPages = 0;
+        let currentTrackIndex = -1;
+        let isPlaying = false;
+        let searchQuery = '';
+        let playMode = 'sequential';
         
-        if (!searchQuery) {
-            filteredFiles = [];
-            searchResultsInfo.classList.remove('visible');
-            noResults.classList.remove('visible');
-            clearSearchBtn.classList.remove('visible');
-        } else {
-            filteredFiles = allFiles.filter(file => 
-                getDisplayName(file).toLowerCase().includes(searchQuery)
-            );
-            searchResultsInfo.classList.add('visible');
-            searchCount.textContent = filteredFiles.length;
-            clearSearchBtn.classList.add('visible');
+        const urlCache = new Map();
+
+        function getDisplayName(fullPath) {
+            if (!fullPath) return '未知';
+            const parts = fullPath.split('/');
+            return parts[parts.length - 1] || fullPath;
+        }
+
+        function getFileExtension(filename) {
+            return filename.split('.').pop().toLowerCase();
+        }
+
+        function getMimeType(filename) {
+            const ext = getFileExtension(filename);
+            const mimeMap = {
+                'mp3': 'audio/mpeg',
+                'm4a': 'audio/mp4',
+                'aac': 'audio/aac',
+                'flac': 'audio/flac',
+                'wav': 'audio/wav',
+                'ogg': 'audio/ogg',
+                'opus': 'audio/opus'
+            };
+            return mimeMap[ext] || 'audio/mpeg';
+        }
+
+        function clearUrlCache() {
+            urlCache.clear();
+        }
+
+        function getCurrentFileList() {
+            return searchQuery ? filteredFiles : allFiles;
+        }
+
+        function performSearch(query) {
+            searchQuery = query.trim().toLowerCase();
             
-            if (filteredFiles.length === 0) {
-                noResults.classList.add('visible');
-            } else {
+            if (!searchQuery) {
+                filteredFiles = [];
+                searchResultsInfo.classList.remove('visible');
                 noResults.classList.remove('visible');
+                clearSearchBtn.classList.remove('visible');
+            } else {
+                filteredFiles = allFiles.filter(file => 
+                    getDisplayName(file).toLowerCase().includes(searchQuery)
+                );
+                searchResultsInfo.classList.add('visible');
+                searchCount.textContent = filteredFiles.length;
+                clearSearchBtn.classList.add('visible');
+                
+                if (filteredFiles.length === 0) {
+                    noResults.classList.add('visible');
+                } else {
+                    noResults.classList.remove('visible');
+                }
             }
-        }
-        
-        currentPage = 0;
-        const fileList = getCurrentFileList();
-        totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
-        renderPage(currentPage);
-        updatePaginationButtons();
-        
-        if (searchQuery) {
-            totalBadge.textContent = filteredFiles.length + ' 首 (筛选)';
-        } else {
-            totalBadge.textContent = allFiles.length + ' 首';
-        }
-    }
-
-    async function fetchFileList() {
-        loadingEl.style.display = 'block';
-        fileListEl.style.display = 'none';
-
-        const response = await fetch('/api/music?action=list&t=' + Date.now());
-        const data = await response.json();
-        allFiles = data.files.filter(f => typeof f === 'string' && f.trim().length > 0);
-        allFiles.sort((a, b) => a.localeCompare(b));
-
-        totalBadge.textContent = allFiles.length + ' 首';
-        currentPage = 0;
-        totalPages = Math.ceil(allFiles.length / PAGE_SIZE);
-        renderPage(currentPage);
-        updatePaginationButtons();
-
-        loadingEl.style.display = 'none';
-        fileListEl.style.display = 'flex';
-    }
-
-    function renderPage(page) {
-        const fileList = getCurrentFileList();
-        const start = page * PAGE_SIZE;
-        const end = Math.min(start + PAGE_SIZE, fileList.length);
-        const pageFiles = fileList.slice(start, end);
-
-        fileListEl.innerHTML = '';
-        if (pageFiles.length === 0) {
-            fileListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#6b7f9f;">没有歌曲</div>';
-            return;
-        }
-
-        for (const filePath of pageFiles) {
-            const displayName = getDisplayName(filePath);
-            const globalIndex = allFiles.indexOf(filePath);
-            const item = document.createElement('div');
-            item.className = 'file-item';
-            if (globalIndex === currentTrackIndex) {
-                item.classList.add('active');
-            }
-
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'file-name';
-            nameSpan.title = filePath;
+            
+            currentPage = 0;
+            const fileList = getCurrentFileList();
+            totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
+            renderPage(currentPage);
+            updatePaginationButtons();
             
             if (searchQuery) {
-                const lowerName = displayName.toLowerCase();
-                const index = lowerName.indexOf(searchQuery);
-                if (index !== -1) {
-                    const before = displayName.substring(0, index);
-                    const match = displayName.substring(index, index + searchQuery.length);
-                    const after = displayName.substring(index + searchQuery.length);
-                    nameSpan.innerHTML = before + '<span class="highlight">' + match + '</span>' + after;
+                totalBadge.textContent = filteredFiles.length + ' 首 (筛选)';
+            } else {
+                totalBadge.textContent = allFiles.length + ' 首';
+            }
+        }
+
+        async function fetchFileList() {
+            loadingEl.style.display = 'block';
+            fileListEl.style.display = 'none';
+
+            const response = await fetch('/api/music?action=list&t=' + Date.now());
+            const data = await response.json();
+            allFiles = data.files.filter(f => typeof f === 'string' && f.trim().length > 0);
+            allFiles.sort((a, b) => a.localeCompare(b));
+
+            totalBadge.textContent = allFiles.length + ' 首';
+            currentPage = 0;
+            totalPages = Math.ceil(allFiles.length / PAGE_SIZE);
+            renderPage(currentPage);
+            updatePaginationButtons();
+
+            loadingEl.style.display = 'none';
+            fileListEl.style.display = 'flex';
+        }
+
+        function renderPage(page) {
+            const fileList = getCurrentFileList();
+            const start = page * PAGE_SIZE;
+            const end = Math.min(start + PAGE_SIZE, fileList.length);
+            const pageFiles = fileList.slice(start, end);
+
+            fileListEl.innerHTML = '';
+            if (pageFiles.length === 0) {
+                fileListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#6b7f9f;">没有歌曲</div>';
+                return;
+            }
+
+            for (const filePath of pageFiles) {
+                const displayName = getDisplayName(filePath);
+                const globalIndex = allFiles.indexOf(filePath);
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                if (globalIndex === currentTrackIndex) {
+                    item.classList.add('active');
+                }
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'file-name';
+                nameSpan.title = filePath;
+                
+                if (searchQuery) {
+                    const lowerName = displayName.toLowerCase();
+                    const index = lowerName.indexOf(searchQuery);
+                    if (index !== -1) {
+                        const before = displayName.substring(0, index);
+                        const match = displayName.substring(index, index + searchQuery.length);
+                        const after = displayName.substring(index + searchQuery.length);
+                        nameSpan.innerHTML = before + '<span class="highlight">' + match + '</span>' + after;
+                    } else {
+                        nameSpan.textContent = displayName;
+                    }
                 } else {
                     nameSpan.textContent = displayName;
                 }
-            } else {
-                nameSpan.textContent = displayName;
+
+                const playBtn = document.createElement('button');
+                playBtn.className = 'play-btn';
+                playBtn.dataset.file = filePath;
+                playBtn.dataset.index = globalIndex;
+                playBtn.textContent = (globalIndex === currentTrackIndex && isPlaying) ? '▶ 播放中' : '▶ 播放';
+
+                playBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(playBtn.dataset.index);
+                    if (!isNaN(index) && index >= 0) {
+                        await playTrack(index, playBtn);
+                    }
+                });
+
+                item.appendChild(nameSpan);
+                item.appendChild(playBtn);
+                fileListEl.appendChild(item);
             }
 
-            const playBtn = document.createElement('button');
-            playBtn.className = 'play-btn';
-            playBtn.dataset.file = filePath;
-            playBtn.dataset.index = globalIndex;
-            playBtn.textContent = (globalIndex === currentTrackIndex && isPlaying) ? '▶ 播放中' : '▶ 播放';
-
-            playBtn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                const index = parseInt(playBtn.dataset.index);
-                if (!isNaN(index) && index >= 0) {
-                    await playTrack(index, playBtn);
-                }
-            });
-
-            item.appendChild(nameSpan);
-            item.appendChild(playBtn);
-            fileListEl.appendChild(item);
+            pageIndicator.textContent = `${page + 1} / ${totalPages || 1}`;
         }
 
-        pageIndicator.textContent = `${page + 1} / ${totalPages || 1}`;
-    }
-
-    async function getPresignedUrl(filePath) {
-        const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
-        const data = await resp.json();
-        return data.url;
-    }
-
-    async function getAudioSource(filePath) {
-        if (urlCache.has(filePath)) {
-            return urlCache.get(filePath);
+        async function getPresignedUrl(filePath) {
+            const resp = await fetch('/api/music?action=sign&file=' + encodeURIComponent(filePath) + '&t=' + Date.now());
+            const data = await resp.json();
+            return data.url;
         }
-        
-        const url = await getPresignedUrl(filePath);
-        urlCache.set(filePath, url);
-        return url;
-    }
 
-    function setupMediaSession(filePath) {
-        if (!('mediaSession' in navigator)) return;
-        try {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: getDisplayName(filePath),
-                artist: 'R2 音乐'
-            });
-            navigator.mediaSession.playbackState = 'playing';
-            
-            navigator.mediaSession.setActionHandler('play', () => {
-                audioPlayer.play();
-            });
-            navigator.mediaSession.setActionHandler('pause', () => {
-                audioPlayer.pause();
-            });
-            navigator.mediaSession.setActionHandler('previoustrack', () => {
-                playPrevious();
-            });
-            navigator.mediaSession.setActionHandler('nexttrack', () => {
-                playNext();
-            });
-        } catch(e) {}
-    }
-
-    async function playTrack(index, btnElement) {
-        if (index < 0 || index >= allFiles.length) {
-            return;
-        }
-        
-        const filePath = allFiles[index];
-        if (!filePath) {
-            return;
-        }
-        
-        if (currentTrackIndex !== -1 && currentTrackIndex !== index) {
-            clearUrlCache();
-        }
-        
-        currentTrackIndex = index;
-        
-        document.querySelectorAll('.file-item').forEach((el) => {
-            const btn = el.querySelector('.play-btn');
-            if (btn) {
-                const idx = parseInt(btn.dataset.index);
-                el.classList.toggle('active', idx === index);
+        async function getAudioSource(filePath) {
+            if (urlCache.has(filePath)) {
+                return urlCache.get(filePath);
             }
-        });
-        
-        document.querySelectorAll('.play-btn').forEach(b => {
-            const idx = parseInt(b.dataset.index);
-            if (idx === index) {
-                b.textContent = '⏳ 加载中';
-                b.disabled = true;
-            } else {
-                b.textContent = '▶ 播放';
-                b.disabled = false;
-                b.classList.remove('playing');
-            }
-        });
+            
+            const url = await getPresignedUrl(filePath);
+            urlCache.set(filePath, url);
+            return url;
+        }
 
-        const source = await getAudioSource(filePath);
-        
-        audioPlayer.src = source;
-        audioPlayer.load();
-        
-        await new Promise((resolve, reject) => {
-            let resolved = false;
-            const timeout = setTimeout(() => {
-                if (!resolved) {
-                    resolved = true;
-                    reject(new Error('加载超时'));
-                }
-            }, 8000);
-            
-            const onReady = () => {
-                if (!resolved) {
-                    resolved = true;
-                    clearTimeout(timeout);
-                    audioPlayer.removeEventListener('canplay', onReady);
-                    audioPlayer.removeEventListener('loadeddata', onReady);
-                    resolve();
-                }
-            };
-            
-            if (audioPlayer.readyState >= 3) {
-                resolved = true;
-                clearTimeout(timeout);
-                resolve();
+        // ===== MediaSession 设置 =====
+        function setupMediaSession(filePath) {
+            if (!('mediaSession' in navigator)) return;
+            try {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: getDisplayName(filePath),
+                    artist: 'R2 音乐'
+                });
+                navigator.mediaSession.playbackState = 'playing';
+                
+                navigator.mediaSession.setActionHandler('play', () => {
+                    audioPlayer.play();
+                });
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    audioPlayer.pause();
+                });
+                navigator.mediaSession.setActionHandler('previoustrack', () => {
+                    playPrevious();
+                });
+                navigator.mediaSession.setActionHandler('nexttrack', () => {
+                    playNext();
+                });
+            } catch(e) {
+                // 忽略不支持的情况
+            }
+        }
+
+        async function playTrack(index, btnElement) {
+            if (index < 0 || index >= allFiles.length) {
                 return;
             }
             
-            audioPlayer.addEventListener('canplay', onReady);
-            audioPlayer.addEventListener('loadeddata', onReady);
-        });
-        
-        await audioPlayer.play();
-        
-        setupMediaSession(filePath);
-        
-        currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
-        updatePlayPauseButton(true);
-        isPlaying = true;
-        document.querySelectorAll('.play-btn').forEach(b => {
-            const idx = parseInt(b.dataset.index);
-            b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
-            b.disabled = false;
-            b.classList.toggle('playing', idx === index);
-        });
-    }
-
-    function togglePlayPause() {
-        if (audioPlayer.paused) {
-            audioPlayer.play().catch(() => {});
-            updatePlayPauseButton(true);
-            isPlaying = true;
-            if ('mediaSession' in navigator) {
-                try { navigator.mediaSession.playbackState = 'playing'; } catch(e) {}
+            const filePath = allFiles[index];
+            if (!filePath) {
+                return;
             }
-            document.querySelectorAll('.play-btn').forEach(b => {
-                const idx = parseInt(b.dataset.index);
-                if (idx === currentTrackIndex) {
-                    b.textContent = '▶ 播放中';
-                    b.classList.add('playing');
+            
+            if (currentTrackIndex !== -1 && currentTrackIndex !== index) {
+                clearUrlCache();
+            }
+            
+            currentTrackIndex = index;
+            
+            document.querySelectorAll('.file-item').forEach((el) => {
+                const btn = el.querySelector('.play-btn');
+                if (btn) {
+                    const idx = parseInt(btn.dataset.index);
+                    el.classList.toggle('active', idx === index);
                 }
             });
-        } else {
-            audioPlayer.pause();
-            updatePlayPauseButton(false);
-            isPlaying = false;
-            if ('mediaSession' in navigator) {
-                try { navigator.mediaSession.playbackState = 'paused'; } catch(e) {}
-            }
+            
             document.querySelectorAll('.play-btn').forEach(b => {
                 const idx = parseInt(b.dataset.index);
-                if (idx === currentTrackIndex) {
+                if (idx === index) {
+                    b.textContent = '⏳ 加载中';
+                    b.disabled = true;
+                } else {
                     b.textContent = '▶ 播放';
+                    b.disabled = false;
                     b.classList.remove('playing');
                 }
             });
-        }
-    }
 
-    function updatePlayPauseButton(playing) {
-        playPauseBtn.textContent = playing ? '⏸' : '▶';
-    }
-
-    function playPrevious() {
-        if (allFiles.length === 0 || currentTrackIndex < 0) return;
-        let newIndex;
-        if (playMode === 'random') {
-            newIndex = getRandomTrack();
-        } else {
-            newIndex = currentTrackIndex - 1;
-            if (newIndex < 0) newIndex = allFiles.length - 1;
-        }
-        if (newIndex !== currentTrackIndex) {
-            clearUrlCache();
-        }
-        playTrack(newIndex);
-    }
-
-    function playNext() {
-        if (allFiles.length === 0 || currentTrackIndex < 0) return;
-        let newIndex;
-        if (playMode === 'random') {
-            newIndex = getRandomTrack();
-        } else if (playMode === 'repeat-one') {
-            newIndex = currentTrackIndex;
-        } else {
-            newIndex = currentTrackIndex + 1;
-            if (newIndex >= allFiles.length) newIndex = 0;
-        }
-        if (newIndex !== currentTrackIndex) {
-            clearUrlCache();
-        }
-        playTrack(newIndex);
-    }
-
-    function getRandomTrack() {
-        if (allFiles.length === 0) return -1;
-        let index;
-        do {
-            index = Math.floor(Math.random() * allFiles.length);
-        } while (index === currentTrackIndex && allFiles.length > 1);
-        return index;
-    }
-
-    function togglePlayMode() {
-        const modes = ['sequential', 'random', 'repeat-one'];
-        const icons = ['🔁', '🔀', '🔂'];
-        
-        const currentIdx = modes.indexOf(playMode);
-        const nextIdx = (currentIdx + 1) % modes.length;
-        playMode = modes[nextIdx];
-        
-        modeBtn.textContent = icons[nextIdx];
-        
-        document.querySelectorAll('.player-controls button').forEach(b => b.classList.remove('mode-active'));
-        modeBtn.classList.add('mode-active');
-    }
-
-    function setupAudioEvents() {
-        audioPlayer.addEventListener('ended', () => {
-            if (playMode === 'repeat-one') {
-                if (currentTrackIndex >= 0) {
-                    const filePath = allFiles[currentTrackIndex];
-                    if (urlCache.has(filePath)) {
-                        audioPlayer.currentTime = 0;
-                        audioPlayer.play().catch(() => {});
-                    } else {
-                        playTrack(currentTrackIndex);
+            const source = await getAudioSource(filePath);
+            
+            audioPlayer.src = source;
+            audioPlayer.load();
+            
+            await new Promise((resolve, reject) => {
+                let resolved = false;
+                const timeout = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        reject(new Error('加载超时'));
                     }
+                }, 8000);
+                
+                const onReady = () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        audioPlayer.removeEventListener('canplay', onReady);
+                        audioPlayer.removeEventListener('loadeddata', onReady);
+                        resolve();
+                    }
+                };
+                
+                if (audioPlayer.readyState >= 3) {
+                    resolved = true;
+                    clearTimeout(timeout);
+                    resolve();
+                    return;
                 }
-            } else {
-                playNext();
-            }
-        });
-
-        playPauseBtn.addEventListener('click', togglePlayPause);
-        prevBtn.addEventListener('click', playPrevious);
-        nextBtn.addEventListener('click', playNext);
-        modeBtn.addEventListener('click', togglePlayMode);
-        
-        audioPlayer.addEventListener('play', () => {
+                
+                audioPlayer.addEventListener('canplay', onReady);
+                audioPlayer.addEventListener('loadeddata', onReady);
+            });
+            
+            await audioPlayer.play();
+            
+            // ===== MediaSession =====
+            setupMediaSession(filePath);
+            
+            currentTrackName.textContent = '🎵 ' + getDisplayName(filePath);
             updatePlayPauseButton(true);
             isPlaying = true;
-            if ('mediaSession' in navigator) {
-                try { navigator.mediaSession.playbackState = 'playing'; } catch(e) {}
+            document.querySelectorAll('.play-btn').forEach(b => {
+                const idx = parseInt(b.dataset.index);
+                b.textContent = idx === index ? '▶ 播放中' : '▶ 播放';
+                b.disabled = false;
+                b.classList.toggle('playing', idx === index);
+            });
+        }
+
+        function togglePlayPause() {
+            if (audioPlayer.paused) {
+                audioPlayer.play().catch(() => {});
+                updatePlayPauseButton(true);
+                isPlaying = true;
+                if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'playing'; } catch(e) {}
+                }
+                document.querySelectorAll('.play-btn').forEach(b => {
+                    const idx = parseInt(b.dataset.index);
+                    if (idx === currentTrackIndex) {
+                        b.textContent = '▶ 播放中';
+                        b.classList.add('playing');
+                    }
+                });
+            } else {
+                audioPlayer.pause();
+                updatePlayPauseButton(false);
+                isPlaying = false;
+                if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'paused'; } catch(e) {}
+                }
+                document.querySelectorAll('.play-btn').forEach(b => {
+                    const idx = parseInt(b.dataset.index);
+                    if (idx === currentTrackIndex) {
+                        b.textContent = '▶ 播放';
+                        b.classList.remove('playing');
+                    }
+                });
             }
-        });
-        
-        audioPlayer.addEventListener('pause', () => {
-            updatePlayPauseButton(false);
-            isPlaying = false;
-            if ('mediaSession' in navigator) {
-                try { navigator.mediaSession.playbackState = 'paused'; } catch(e) {}
+        }
+
+        function updatePlayPauseButton(playing) {
+            playPauseBtn.textContent = playing ? '⏸' : '▶';
+        }
+
+        function playPrevious() {
+            if (allFiles.length === 0 || currentTrackIndex < 0) return;
+            let newIndex;
+            if (playMode === 'random') {
+                newIndex = getRandomTrack();
+            } else {
+                newIndex = currentTrackIndex - 1;
+                if (newIndex < 0) newIndex = allFiles.length - 1;
             }
-        });
-    }
+            if (newIndex !== currentTrackIndex) {
+                clearUrlCache();
+            }
+            playTrack(newIndex);
+        }
 
-    function setupSearchEvents() {
-        searchInput.addEventListener('input', (e) => {
-            performSearch(e.target.value);
-        });
-        
-        clearSearchBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            performSearch('');
-            searchInput.focus();
-        });
-    }
+        function playNext() {
+            if (allFiles.length === 0 || currentTrackIndex < 0) return;
+            let newIndex;
+            if (playMode === 'random') {
+                newIndex = getRandomTrack();
+            } else if (playMode === 'repeat-one') {
+                newIndex = currentTrackIndex;
+            } else {
+                newIndex = currentTrackIndex + 1;
+                if (newIndex >= allFiles.length) newIndex = 0;
+            }
+            if (newIndex !== currentTrackIndex) {
+                clearUrlCache();
+            }
+            playTrack(newIndex);
+        }
 
-    function goToPage(page) {
-        const fileList = getCurrentFileList();
-        totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
-        if (page < 0 || page >= totalPages) return;
-        currentPage = page;
-        renderPage(currentPage);
-        updatePaginationButtons();
-        document.getElementById('fileListContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+        function getRandomTrack() {
+            if (allFiles.length === 0) return -1;
+            let index;
+            do {
+                index = Math.floor(Math.random() * allFiles.length);
+            } while (index === currentTrackIndex && allFiles.length > 1);
+            return index;
+        }
 
-    function updatePaginationButtons() {
-        const fileList = getCurrentFileList();
-        totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
-        prevPageBtn.disabled = currentPage === 0;
-        nextPageBtn.disabled = currentPage >= totalPages - 1;
-        pageIndicator.textContent = `${currentPage + 1} / ${totalPages || 1}`;
-    }
+        function togglePlayMode() {
+            const modes = ['sequential', 'random', 'repeat-one'];
+            const icons = ['🔁', '🔀', '🔂'];
+            
+            const currentIdx = modes.indexOf(playMode);
+            const nextIdx = (currentIdx + 1) % modes.length;
+            playMode = modes[nextIdx];
+            
+            modeBtn.textContent = icons[nextIdx];
+            
+            document.querySelectorAll('.player-controls button').forEach(b => b.classList.remove('mode-active'));
+            modeBtn.classList.add('mode-active');
+        }
 
-    function initPaginationEvents() {
-        prevPageBtn.addEventListener('click', () => {
-            if (currentPage > 0) goToPage(currentPage - 1);
-        });
-        nextPageBtn.addEventListener('click', () => {
+        function setupAudioEvents() {
+            audioPlayer.addEventListener('ended', () => {
+                if (playMode === 'repeat-one') {
+                    if (currentTrackIndex >= 0) {
+                        const filePath = allFiles[currentTrackIndex];
+                        if (urlCache.has(filePath)) {
+                            audioPlayer.currentTime = 0;
+                            audioPlayer.play().catch(() => {});
+                        } else {
+                            playTrack(currentTrackIndex);
+                        }
+                    }
+                } else {
+                    playNext();
+                }
+            });
+
+            playPauseBtn.addEventListener('click', togglePlayPause);
+            prevBtn.addEventListener('click', playPrevious);
+            nextBtn.addEventListener('click', playNext);
+            modeBtn.addEventListener('click', togglePlayMode);
+            
+            audioPlayer.addEventListener('play', () => {
+                updatePlayPauseButton(true);
+                isPlaying = true;
+                if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'playing'; } catch(e) {}
+                }
+            });
+            
+            audioPlayer.addEventListener('pause', () => {
+                updatePlayPauseButton(false);
+                isPlaying = false;
+                if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'paused'; } catch(e) {}
+                }
+            });
+        }
+
+        function setupSearchEvents() {
+            searchInput.addEventListener('input', (e) => {
+                performSearch(e.target.value);
+            });
+            
+            clearSearchBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                performSearch('');
+                searchInput.focus();
+            });
+        }
+
+        function goToPage(page) {
             const fileList = getCurrentFileList();
             totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
-            if (currentPage < totalPages - 1) goToPage(currentPage + 1);
-        });
-    }
+            if (page < 0 || page >= totalPages) return;
+            currentPage = page;
+            renderPage(currentPage);
+            updatePaginationButtons();
+            document.getElementById('fileListContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
 
-    async function init() {
-        initPaginationEvents();
-        setupAudioEvents();
-        setupSearchEvents();
-        
-        modeBtn.textContent = '🔁';
-        modeBtn.classList.add('mode-active');
-        
-        await fetchFileList();
-        
-        currentTrackIndex = -1;
-        currentTrackName.textContent = '🎧 未选择';
-        renderPage(currentPage);
-    }
+        function updatePaginationButtons() {
+            const fileList = getCurrentFileList();
+            totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
+            prevPageBtn.disabled = currentPage === 0;
+            nextPageBtn.disabled = currentPage >= totalPages - 1;
+            pageIndicator.textContent = `${currentPage + 1} / ${totalPages || 1}`;
+        }
 
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        init();
-    } else {
-        document.addEventListener('DOMContentLoaded', init);
-    }
+        function initPaginationEvents() {
+            prevPageBtn.addEventListener('click', () => {
+                if (currentPage > 0) goToPage(currentPage - 1);
+            });
+            nextPageBtn.addEventListener('click', () => {
+                const fileList = getCurrentFileList();
+                totalPages = Math.ceil(fileList.length / PAGE_SIZE) || 1;
+                if (currentPage < totalPages - 1) goToPage(currentPage + 1);
+            });
+        }
 
-})();
+        async function init() {
+            initPaginationEvents();
+            setupAudioEvents();
+            setupSearchEvents();
+            
+            modeBtn.textContent = '🔁';
+            modeBtn.classList.add('mode-active');
+            
+            await fetchFileList();
+            
+            currentTrackIndex = -1;
+            currentTrackName.textContent = '🎧 未选择';
+            renderPage(currentPage);
+        }
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            init();
+        } else {
+            document.addEventListener('DOMContentLoaded', init);
+        }
+
+    })();
 </script>
 
 </body>
