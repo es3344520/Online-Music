@@ -1,8 +1,7 @@
 {
   "name": "vercel-r2-signer",
   "version": "1.0.0",
-  "description": "R2 signer for Vercel",
   "dependencies": {
-    "aws4fetch": "^1.0.17"
+    "aws4": "^1.12.0"
   }
 }
