@@ -41,7 +41,12 @@ module.exports = async (req, res) => {
     return res.status(200).json({ success: true, files });
   }
 
-  const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: file });
+  if (!file) {
+    return res.status(400).json({ success: false, error: 'Missing file parameter' });
+  }
+
+  const encodedFile = encodeURIComponent(file);
+  const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: encodedFile });
   const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 1800 });
 
   let finalUrl = signedUrl;
