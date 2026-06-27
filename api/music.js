@@ -28,10 +28,9 @@ module.exports = async (req, res) => {
     },
   });
 
-  // 手动解析完整 URL
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const action = url.searchParams.get('action');
-  const file = url.searchParams.get('file');
+  const fullUrl = new URL(req.url, `http://${req.headers.host}`);
+  const action = fullUrl.searchParams.get('action');
+  const file = fullUrl.searchParams.get('file');
 
   if (!action || action === 'list') {
     const command = new ListObjectsV2Command({ Bucket: R2_BUCKET_NAME });
@@ -44,15 +43,14 @@ module.exports = async (req, res) => {
     return res.status(200).json({ success: true, files });
   }
 
-  const encodedFile = encodeURIComponent(file);
-  const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: encodedFile });
+  const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: file });
   const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 1800 });
 
   let finalUrl = signedUrl;
   if (R2_CUSTOM_DOMAIN) {
-    const urlObj = new URL(signedUrl);
-    urlObj.hostname = R2_CUSTOM_DOMAIN;
-    finalUrl = urlObj.toString();
+    const url = new URL(signedUrl);
+    url.hostname = R2_CUSTOM_DOMAIN;
+    finalUrl = url.toString();
   }
 
   return res.status(200).json({ success: true, url: finalUrl });
