@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
 
   const { action, file } = req.query;
 
-  if (!action || action === 'list') {
+  if (!action || action === 'fetch') {
     const command = new ListObjectsV2Command({ Bucket: R2_BUCKET_NAME });
     const response = await s3Client.send(command);
 
@@ -41,15 +41,17 @@ module.exports = async (req, res) => {
     return res.status(200).json({ success: true, files });
   }
 
-  const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: file });
-  const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 });
+  if (action === 'get') {
+    const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: file });
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 });
 
-  let finalUrl = signedUrl;
-  if (R2_CUSTOM_DOMAIN) {
-    const url = new URL(signedUrl);
-    url.hostname = R2_CUSTOM_DOMAIN;
-    finalUrl = url.toString();
+    let finalUrl = signedUrl;
+    if (R2_CUSTOM_DOMAIN) {
+      const url = new URL(signedUrl);
+      url.hostname = R2_CUSTOM_DOMAIN;
+      finalUrl = url.toString();
+    }
+
+    return res.status(200).json({ success: true, url: finalUrl });
   }
-
-  return res.status(200).json({ success: true, url: finalUrl });
 };
