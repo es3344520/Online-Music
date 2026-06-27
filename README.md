@@ -2,7 +2,9 @@ R2音乐库，把音乐存储在cloudflare R2  把请求接口部署在Vercel
 
 为了快速访问，最好是有自己的域名  
 
-Vercel相关的环境变量命名，在Vercel填写好R2相关的令牌，前4个令牌是必须的，R2域名自定义之后可以填写第五个
+Vercel相关的环境变量命名，在Vercel填写好R2相关的令牌，前4个令牌是必须的，R2域名自定义之后可以填写第五个 
+
+
 R2_ACCOUNT_ID
 R2_ACCESS_KEY_ID
 R2_SECRET_ACCESS_KEY
