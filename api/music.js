@@ -28,9 +28,7 @@ module.exports = async (req, res) => {
     },
   });
 
-  const fullUrl = new URL(req.url, `http://${req.headers.host}`);
-  const action = fullUrl.searchParams.get('action');
-  const file = fullUrl.searchParams.get('file');
+  const { action, file } = req.query;
 
   if (!action || action === 'list') {
     const command = new ListObjectsV2Command({ Bucket: R2_BUCKET_NAME });
