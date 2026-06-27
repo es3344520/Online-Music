@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
   }
 
   const command = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: file });
-  const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 1800 });
+  const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 });
 
   let finalUrl = signedUrl;
   if (R2_CUSTOM_DOMAIN) {
